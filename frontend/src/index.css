@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: #f4f7f6;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #b0eac9;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7bd9ab;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold px-5 py-2.5 rounded-xl shadow-soft hover:from-primary-600 hover:to-primary-700 transition-all duration-200 active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-white text-primary-700 border-2 border-primary-200 font-semibold px-5 py-2.5 rounded-xl hover:bg-primary-50 transition-all duration-200 active:scale-95;
+  }
+  .btn-danger {
+    @apply bg-gradient-to-r from-coral-500 to-coral-600 text-white font-semibold px-4 py-2 rounded-xl hover:from-coral-600 hover:to-red-600 transition-all duration-200 active:scale-95;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-card p-6 border border-gray-100;
+  }
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all bg-white;
+  }
+  .label-field {
+    @apply block text-sm font-medium text-gray-600 mb-1.5;
+  }
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold inline-block;
+  }
+}
