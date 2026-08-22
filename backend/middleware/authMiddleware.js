@@ -40,7 +40,9 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const userRole = (req.user.role || "").toLowerCase();
+    const allowed = roles.map((r) => r.toLowerCase());
+    if (!allowed.includes(userRole)) {
       return res.status(403).json({ message: `Role '${req.user.role}' is not authorized for this action` });
     }
     next();
