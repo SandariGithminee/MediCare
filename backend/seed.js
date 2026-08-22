@@ -116,10 +116,10 @@ const seedData = async () => {
     console.log("🌱 Inserting audit logs...");
     await db.query(
       `INSERT INTO audit_logs (user_name, role, action, details, ip_address) VALUES
-       ('admin@medicare.com', 'Admin', 'System Migration', 'Migrated database to Neon PostgreSQL', '127.0.0.1')`
+       ('admin@medicare.com', 'Admin', 'System Migration', 'Migrated database to Supabase PostgreSQL', '127.0.0.1')`
     );
 
-    console.log("✅ Neon PostgreSQL database seeded successfully with realistic Medicare demo data!");
+    console.log("✅ Supabase PostgreSQL database seeded successfully with realistic Medicare demo data!");
     process.exit(0);
   } catch (error) {
     console.error(`❌ Error seeding database: ${error.message}`);

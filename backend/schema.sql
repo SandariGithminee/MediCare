@@ -1,0 +1,161 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role VARCHAR(50) DEFAULT 'Admin',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS patients (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(255),
+  phone VARCHAR(50) NOT NULL,
+  age INTEGER NOT NULL,
+  gender VARCHAR(20) NOT NULL,
+  address TEXT,
+  blood_group VARCHAR(10),
+  medical_history TEXT,
+  emergency_contact VARCHAR(100),
+  status VARCHAR(20) DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS doctors (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  specialization VARCHAR(100) NOT NULL,
+  department VARCHAR(100) NOT NULL,
+  qualification VARCHAR(255),
+  consultation_fee NUMERIC DEFAULT 0,
+  available_days TEXT[],
+  status VARCHAR(20) DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS appointments (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES doctors(id) ON DELETE CASCADE,
+  appointment_date DATE NOT NULL,
+  appointment_time VARCHAR(20) NOT NULL,
+  status VARCHAR(50) DEFAULT 'Pending',
+  reason TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS medical_records (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES doctors(id) ON DELETE CASCADE,
+  appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
+  record_date DATE DEFAULT CURRENT_DATE,
+  diagnosis TEXT NOT NULL,
+  symptoms TEXT,
+  vitals JSONB DEFAULT '{}'::jsonb,
+  prescriptions JSONB DEFAULT '[]'::jsonb,
+  treatment_plan TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS laboratory (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES doctors(id) ON DELETE CASCADE,
+  test_name VARCHAR(255) NOT NULL,
+  test_category VARCHAR(100) NOT NULL,
+  sample_details TEXT,
+  result_value TEXT,
+  normal_range VARCHAR(100),
+  unit VARCHAR(50),
+  status VARCHAR(50) DEFAULT 'Requested',
+  requested_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  completed_at TIMESTAMP,
+  technician_notes TEXT,
+  cost NUMERIC DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS medicines (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  manufacturer VARCHAR(255),
+  batch_number VARCHAR(100) NOT NULL,
+  quantity_in_stock INTEGER DEFAULT 0,
+  min_stock_level INTEGER DEFAULT 10,
+  unit_price NUMERIC DEFAULT 0,
+  expiry_date DATE NOT NULL,
+  location VARCHAR(100) DEFAULT 'Main Pharmacy',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admissions (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES doctors(id) ON DELETE CASCADE,
+  room_number VARCHAR(50) NOT NULL,
+  bed_number VARCHAR(50) NOT NULL,
+  admission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  discharge_date TIMESTAMP,
+  status VARCHAR(50) DEFAULT 'Admitted',
+  reason TEXT,
+  daily_rate NUMERIC DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS staff (
+  id SERIAL PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  role VARCHAR(100) NOT NULL,
+  department VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  salary NUMERIC DEFAULT 0,
+  join_date DATE DEFAULT CURRENT_DATE,
+  status VARCHAR(50) DEFAULT 'Active',
+  attendance JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS billing (
+  id SERIAL PRIMARY KEY,
+  invoice_number VARCHAR(50) NOT NULL,
+  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  items JSONB DEFAULT '[]'::jsonb,
+  total_amount NUMERIC DEFAULT 0,
+  paid_amount NUMERIC DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'Pending',
+  payment_method VARCHAR(50) DEFAULT 'Cash',
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id SERIAL PRIMARY KEY,
+  user_name VARCHAR(255) NOT NULL,
+  role VARCHAR(50),
+  action VARCHAR(255) NOT NULL,
+  details TEXT,
+  ip_address VARCHAR(100),
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
