@@ -96,19 +96,7 @@ cp .env.example .env
 ```bash
 npm run dev
 ```
-The app will run at `http://localhost:5173`.
-
-### 4. Login
-
-Open `http://localhost:5173` in your browser. Click **Get Started / Login** and use one of the seeded demo accounts:
-
-| Role         | Email                    | Password       |
-|--------------|--------------------------|----------------|
-| Admin        | admin@medicare.com       | admin123       |
-| Doctor       | doctor@medicare.com      | doctor123      |
-| Receptionist | reception@medicare.com   | reception123   |
-
-Or click **Sign up** to create your own account.
+The app will run at `http://localhost:5173`
 
 ---
 
