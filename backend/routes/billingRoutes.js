@@ -7,13 +7,13 @@ const {
   updateBilling,
   deleteBilling,
 } = require("../controllers/billingController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getBillings).post(protect, createBilling);
+router.route("/").get(protect, getBillings).post(protect, authorize("admin", "accountant", "receptionist"), createBilling);
 router
   .route("/:id")
   .get(protect, getBillingById)
-  .put(protect, updateBilling)
-  .delete(protect, deleteBilling);
+  .put(protect, authorize("admin", "accountant", "receptionist"), updateBilling)
+  .delete(protect, authorize("admin"), deleteBilling);
 
 module.exports = router;

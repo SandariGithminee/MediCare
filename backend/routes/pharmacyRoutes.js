@@ -8,14 +8,14 @@ const {
     deleteMedicine,
     dispenseMedicine,
 } = require("../controllers/pharmacyController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getMedicines).post(protect, createMedicine);
+router.route("/").get(protect, getMedicines).post(protect, authorize("admin", "pharmacist"), createMedicine);
 router
     .route("/:id")
     .get(protect, getMedicineById)
-    .put(protect, updateMedicine)
-    .delete(protect, deleteMedicine);
-router.post("/:id/dispense", protect, dispenseMedicine);
+    .put(protect, authorize("admin", "pharmacist"), updateMedicine)
+    .delete(protect, authorize("admin", "pharmacist"), deleteMedicine);
+router.post("/:id/dispense", protect, authorize("admin", "pharmacist", "doctor"), dispenseMedicine);
 
 module.exports = router;

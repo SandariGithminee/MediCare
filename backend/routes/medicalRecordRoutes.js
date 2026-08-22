@@ -7,13 +7,13 @@ const {
     updateMedicalRecord,
     deleteMedicalRecord,
 } = require("../controllers/medicalRecordController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getMedicalRecords).post(protect, createMedicalRecord);
+router.route("/").get(protect, getMedicalRecords).post(protect, authorize("admin", "doctor"), createMedicalRecord);
 router
     .route("/:id")
     .get(protect, getMedicalRecordById)
-    .put(protect, updateMedicalRecord)
-    .delete(protect, deleteMedicalRecord);
+    .put(protect, authorize("admin", "doctor"), updateMedicalRecord)
+    .delete(protect, authorize("admin"), deleteMedicalRecord);
 
 module.exports = router;

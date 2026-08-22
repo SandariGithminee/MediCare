@@ -43,6 +43,24 @@ const getStats = async (req, res) => {
 
     const statusGroupRes = await db.query("SELECT status as _id, COUNT(*)::int as count FROM appointments GROUP BY status");
 
+    // Pharmacy Alerts: low stock medicines
+    const lowStockRes = await db.query(
+      "SELECT id, name, category, quantity_in_stock, min_stock_level FROM medicines WHERE quantity_in_stock <= min_stock_level ORDER BY quantity_in_stock ASC LIMIT 10"
+    );
+    const lowStockMedicines = lowStockRes.rows.map((m) => ({
+      _id: m.id, id: m.id, name: m.name, category: m.category,
+      quantityInStock: Number(m.quantity_in_stock), minStockLevel: Number(m.min_stock_level),
+    }));
+
+    // Pharmacy Alerts: near-expiry medicines (within 90 days)
+    const nearExpiryRes = await db.query(
+      "SELECT id, name, category, expiry_date, quantity_in_stock FROM medicines WHERE expiry_date <= CURRENT_DATE + INTERVAL '90 days' AND expiry_date >= CURRENT_DATE ORDER BY expiry_date ASC LIMIT 10"
+    );
+    const nearExpiryMedicines = nearExpiryRes.rows.map((m) => ({
+      _id: m.id, id: m.id, name: m.name, category: m.category,
+      expiryDate: m.expiry_date, quantityInStock: Number(m.quantity_in_stock),
+    }));
+
     res.json({
       totalPatients,
       totalDoctors,
@@ -52,6 +70,12 @@ const getStats = async (req, res) => {
       pendingRevenue,
       recentAppointments,
       appointmentsByStatus: statusGroupRes.rows,
+      pharmacyAlerts: {
+        lowStockMedicines,
+        nearExpiryMedicines,
+        lowStockCount: lowStockMedicines.length,
+        nearExpiryCount: nearExpiryMedicines.length,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

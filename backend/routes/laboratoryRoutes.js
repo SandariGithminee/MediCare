@@ -7,13 +7,13 @@ const {
     updateLabTest,
     deleteLabTest,
 } = require("../controllers/laboratoryController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getLabTests).post(protect, createLabTest);
+router.route("/").get(protect, getLabTests).post(protect, authorize("admin", "doctor", "lab"), createLabTest);
 router
     .route("/:id")
     .get(protect, getLabTestById)
-    .put(protect, updateLabTest)
-    .delete(protect, deleteLabTest);
+    .put(protect, authorize("admin", "doctor", "lab"), updateLabTest)
+    .delete(protect, authorize("admin"), deleteLabTest);
 
 module.exports = router;

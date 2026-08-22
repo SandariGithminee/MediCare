@@ -7,13 +7,13 @@ const {
   updateAppointment,
   deleteAppointment,
 } = require("../controllers/appointmentController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getAppointments).post(protect, createAppointment);
+router.route("/").get(protect, getAppointments).post(protect, authorize("admin", "doctor", "receptionist"), createAppointment);
 router
   .route("/:id")
   .get(protect, getAppointmentById)
-  .put(protect, updateAppointment)
-  .delete(protect, deleteAppointment);
+  .put(protect, authorize("admin", "doctor", "receptionist"), updateAppointment)
+  .delete(protect, authorize("admin"), deleteAppointment);
 
 module.exports = router;

@@ -61,6 +61,42 @@ const getReportsSummary = async (req, res) => {
         const pendLabRes = await db.query("SELECT COUNT(*) FROM laboratory WHERE status != 'Completed'");
         const pendingLabTests = Number(pendLabRes.rows[0].count);
 
+        // Patient Demographics: by gender
+        const genderRes = await db.query("SELECT gender as _id, COUNT(*)::int as count FROM patients GROUP BY gender ORDER BY count DESC");
+        const patientsByGender = genderRes.rows;
+
+        // Patient Demographics: by status
+        const patStatusRes = await db.query("SELECT status as _id, COUNT(*)::int as count FROM patients GROUP BY status ORDER BY count DESC");
+        const patientsByStatus = patStatusRes.rows;
+
+        // Appointment Analytics: by status
+        const apptStatusRes = await db.query("SELECT status as _id, COUNT(*)::int as count FROM appointments GROUP BY status ORDER BY count DESC");
+        const appointmentsByStatus = apptStatusRes.rows;
+
+        // Appointment Analytics: by department (via doctor)
+        const apptDeptRes = await db.query(`
+            SELECT d.department as _id, COUNT(*)::int as count
+            FROM appointments a
+            LEFT JOIN doctors d ON a.doctor_id = d.id
+            WHERE d.department IS NOT NULL
+            GROUP BY d.department
+            ORDER BY count DESC
+        `);
+        const appointmentsByDepartment = apptDeptRes.rows;
+
+        // Appointment Analytics: 30-day trend (appointments per day)
+        const trendRes = await db.query(`
+            SELECT appointment_date::date as date, COUNT(*)::int as count
+            FROM appointments
+            WHERE appointment_date >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY appointment_date::date
+            ORDER BY date ASC
+        `);
+        const appointmentTrend = trendRes.rows.map((r) => ({
+            date: r.date,
+            count: r.count,
+        }));
+
         res.json({
             summary: {
                 totalPatients,
@@ -76,6 +112,15 @@ const getReportsSummary = async (req, res) => {
             },
             revenueByCategory,
             lowStockMedicines,
+            patientDemographics: {
+                byGender: patientsByGender,
+                byStatus: patientsByStatus,
+            },
+            appointmentAnalytics: {
+                byStatus: appointmentsByStatus,
+                byDepartment: appointmentsByDepartment,
+                trend30Days: appointmentTrend,
+            },
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
