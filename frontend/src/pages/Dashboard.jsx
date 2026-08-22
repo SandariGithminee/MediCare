@@ -15,6 +15,8 @@ import {
   BarChart3,
   ShieldCheck,
   ChevronRight,
+  AlertTriangle,
+  PackageX,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import api from "../api/axios";
@@ -62,6 +64,9 @@ const Dashboard = () => {
     { title: "Reports", desc: "Revenue & hospital analytics", icon: BarChart3, to: "/reports", color: "bg-rose-50 text-rose-600 border-rose-100" },
   ];
 
+  const pharmacyAlerts = stats?.pharmacyAlerts;
+  const hasAlerts = pharmacyAlerts && (pharmacyAlerts.lowStockCount > 0 || pharmacyAlerts.nearExpiryCount > 0);
+
   return (
     <div className="space-y-6">
       <div>
@@ -75,6 +80,59 @@ const Dashboard = () => {
         <StatCard icon={CalendarCheck} label="Today's Appointments" value={stats?.todayAppointments ?? 0} color="coral" />
         <StatCard icon={DollarSign} label="Revenue Collected" value={`LKR ${(stats?.totalRevenue ?? 0).toLocaleString()}`} color="amber" />
       </div>
+
+      {/* Pharmacy Alerts Banner */}
+      {hasAlerts && (
+        <div className="card border-l-4 border-l-amber-500 bg-amber-50/50">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="text-amber-600" size={20} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-800 mb-2">Pharmacy Alerts</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Low Stock Alerts */}
+                {pharmacyAlerts.lowStockCount > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 mb-1.5 flex items-center gap-1">
+                      <PackageX size={14} /> {pharmacyAlerts.lowStockCount} Low Stock Items
+                    </p>
+                    <div className="space-y-1">
+                      {pharmacyAlerts.lowStockMedicines.slice(0, 4).map((m) => (
+                        <div key={m._id} className="flex items-center justify-between text-xs bg-white rounded-lg px-2.5 py-1.5 border border-red-100">
+                          <span className="font-medium text-gray-700">{m.name}</span>
+                          <span className="font-bold text-red-600">{m.quantityInStock} left</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Near Expiry Alerts */}
+                {pharmacyAlerts.nearExpiryCount > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 mb-1.5 flex items-center gap-1">
+                      <AlertTriangle size={14} /> {pharmacyAlerts.nearExpiryCount} Expiring Soon (≤90 days)
+                    </p>
+                    <div className="space-y-1">
+                      {pharmacyAlerts.nearExpiryMedicines.slice(0, 4).map((m) => (
+                        <div key={m._id} className="flex items-center justify-between text-xs bg-white rounded-lg px-2.5 py-1.5 border border-amber-100">
+                          <span className="font-medium text-gray-700">{m.name}</span>
+                          <span className="font-bold text-amber-600">
+                            {new Date(m.expiryDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Link to="/pharmacy" className="inline-block mt-3 text-xs font-semibold text-amber-700 hover:underline">
+                View Full Pharmacy →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Navigation Cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

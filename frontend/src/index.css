@@ -49,3 +49,57 @@ body {
     @apply px-3 py-1 rounded-full text-xs font-semibold inline-block;
   }
 }
+
+/* Print Receipt Styles */
+@media print {
+  /* Hide everything except the receipt */
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide sidebar, navbar, modal backdrop, buttons */
+  aside,
+  header,
+  nav,
+  .fixed.inset-0.z-50 > div > div:first-child,
+  button,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    display: none !important;
+  }
+
+  /* Show only the receipt content */
+  .fixed.inset-0.z-50 {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  .fixed.inset-0.z-50 > div {
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Re-show print button text content inside receipt */
+  .space-y-6.p-4 {
+    border: none !important;
+    padding: 20px !important;
+  }
+
+  /* Clean table rendering */
+  table {
+    border-collapse: collapse;
+  }
+  th, td {
+    border: 1px solid #e5e7eb;
+    padding: 8px;
+  }
+}
+
