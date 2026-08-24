@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS medical_records (
   prescriptions JSONB DEFAULT '[]'::jsonb,
   treatment_plan TEXT,
   notes TEXT,
+  documents JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS laboratory (
   completed_at TIMESTAMP,
   technician_notes TEXT,
   cost NUMERIC DEFAULT 0,
+  documents JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

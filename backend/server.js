@@ -31,6 +31,7 @@ app.use("/api/admissions", require("./routes/admissionRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
 app.use("/api/audit-logs", require("./routes/auditLogRoutes"));
+app.use("/api/upload", require("./routes/uploadRoutes"));
 
 app.use(notFound);
 app.use(errorHandler);

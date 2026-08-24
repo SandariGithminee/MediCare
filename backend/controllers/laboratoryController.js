@@ -4,7 +4,7 @@ const buildLabQuery = (whereClause = "", params = []) => {
     return {
         text: `
       SELECT 
-        l.id, l.patient_id, l.doctor_id, l.test_name, l.test_category, l.sample_details, l.result_value, l.normal_range, l.unit, l.status, l.requested_date, l.completed_at, l.technician_notes, l.cost, l.created_at, l.updated_at,
+        l.id, l.patient_id, l.doctor_id, l.test_name, l.test_category, l.sample_details, l.result_value, l.normal_range, l.unit, l.status, l.requested_date, l.completed_at, l.technician_notes, l.cost, l.documents, l.created_at, l.updated_at,
         p.first_name as p_first_name, p.last_name as p_last_name, p.phone as p_phone, p.gender as p_gender,
         d.name as d_name, d.specialization as d_specialization
       FROM laboratory l
@@ -47,6 +47,7 @@ const mapLabTest = (row) => {
         completedAt: row.completed_at,
         technicianNotes: row.technician_notes,
         cost: Number(row.cost || 0),
+        documents: typeof row.documents === "string" ? JSON.parse(row.documents) : row.documents || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -88,14 +89,14 @@ const getLabTestById = async (req, res) => {
 
 const createLabTest = async (req, res) => {
     try {
-        const { patient, doctor, patientId, doctorId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status, technicianNotes, cost } = req.body;
+        const { patient, doctor, patientId, doctorId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status, technicianNotes, cost, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
 
         const insertResult = await db.query(
-            `INSERT INTO laboratory (patient_id, doctor_id, test_name, test_category, sample_details, result_value, normal_range, unit, status, technician_notes, cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-            [pId, dId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status || "Requested", technicianNotes, cost ? Number(cost) : 0]
+            `INSERT INTO laboratory (patient_id, doctor_id, test_name, test_category, sample_details, result_value, normal_range, unit, status, technician_notes, cost, documents)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+            [pId, dId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status || "Requested", technicianNotes, cost ? Number(cost) : 0, JSON.stringify(documents || [])]
         );
 
         const newId = insertResult.rows[0].id;
@@ -109,7 +110,7 @@ const createLabTest = async (req, res) => {
 
 const updateLabTest = async (req, res) => {
     try {
-        const { patient, doctor, patientId, doctorId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status, technicianNotes, cost, completedAt } = req.body;
+        const { patient, doctor, patientId, doctorId, testName, testCategory, sampleDetails, resultValue, normalRange, unit, status, technicianNotes, cost, completedAt, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
         let compAt = completedAt;
@@ -132,8 +133,9 @@ const updateLabTest = async (req, res) => {
        completed_at = COALESCE($10, completed_at),
        technician_notes = COALESCE($11, technician_notes),
        cost = COALESCE($12, cost),
+       documents = COALESCE($13, documents),
        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $13`,
+       WHERE id = $14`,
             [
                 pId,
                 dId,
@@ -147,6 +149,7 @@ const updateLabTest = async (req, res) => {
                 compAt,
                 technicianNotes,
                 cost ? Number(cost) : null,
+                documents ? JSON.stringify(documents) : null,
                 req.params.id,
             ]
         );

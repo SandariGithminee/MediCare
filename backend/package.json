@@ -10,6 +10,7 @@
     "seed": "node seed.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -17,6 +18,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.0",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {

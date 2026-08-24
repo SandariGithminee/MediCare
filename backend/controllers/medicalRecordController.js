@@ -4,7 +4,7 @@ const buildMedicalRecordQuery = (whereClause = "", params = []) => {
     return {
         text: `
       SELECT 
-        m.id, m.patient_id, m.doctor_id, m.appointment_id, m.record_date, m.diagnosis, m.symptoms, m.vitals, m.prescriptions, m.treatment_plan, m.notes, m.created_at, m.updated_at,
+        m.id, m.patient_id, m.doctor_id, m.appointment_id, m.record_date, m.diagnosis, m.symptoms, m.vitals, m.prescriptions, m.treatment_plan, m.notes, m.documents, m.created_at, m.updated_at,
         p.first_name as p_first_name, p.last_name as p_last_name, p.phone as p_phone, p.gender as p_gender, p.blood_group as p_blood_group,
         d.name as d_name, d.specialization as d_specialization, d.department as d_department
       FROM medical_records m
@@ -47,6 +47,7 @@ const mapMedicalRecord = (row) => {
         prescriptions: typeof row.prescriptions === "string" ? JSON.parse(row.prescriptions) : row.prescriptions || [],
         treatmentPlan: row.treatment_plan,
         notes: row.notes,
+        documents: typeof row.documents === "string" ? JSON.parse(row.documents) : row.documents || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -88,7 +89,7 @@ const getMedicalRecordById = async (req, res) => {
 
 const createMedicalRecord = async (req, res) => {
     try {
-        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes } = req.body;
+        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
         const aId = appointmentId || (typeof appointment === "object" ? appointment?._id || appointment?.id : appointment);
@@ -96,8 +97,8 @@ const createMedicalRecord = async (req, res) => {
 
         const insertResult = await db.query(
             `INSERT INTO medical_records 
-       (patient_id, doctor_id, appointment_id, record_date, diagnosis, symptoms, vitals, prescriptions, treatment_plan, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+       (patient_id, doctor_id, appointment_id, record_date, diagnosis, symptoms, vitals, prescriptions, treatment_plan, notes, documents)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
             [
                 pId,
                 dId,
@@ -109,6 +110,7 @@ const createMedicalRecord = async (req, res) => {
                 JSON.stringify(prescriptions || []),
                 treatmentPlan,
                 notes,
+                JSON.stringify(documents || []),
             ]
         );
 
@@ -123,7 +125,7 @@ const createMedicalRecord = async (req, res) => {
 
 const updateMedicalRecord = async (req, res) => {
     try {
-        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes } = req.body;
+        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
         const aId = appointmentId || (typeof appointment === "object" ? appointment?._id || appointment?.id : appointment);
@@ -141,8 +143,9 @@ const updateMedicalRecord = async (req, res) => {
        prescriptions = COALESCE($8, prescriptions),
        treatment_plan = COALESCE($9, treatment_plan),
        notes = COALESCE($10, notes),
+       documents = COALESCE($11, documents),
        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $11`,
+       WHERE id = $12`,
             [
                 pId,
                 dId,
@@ -154,6 +157,7 @@ const updateMedicalRecord = async (req, res) => {
                 prescriptions ? JSON.stringify(prescriptions) : null,
                 treatmentPlan,
                 notes,
+                documents ? JSON.stringify(documents) : null,
                 req.params.id,
             ]
         );

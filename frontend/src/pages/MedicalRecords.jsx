@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Search, FileText, Activity, Stethoscope, User, Calendar, Pill } from "lucide-react";
+import { Plus, Search, FileText, Activity, Stethoscope, User, Calendar, Pill, Paperclip, ExternalLink, Download } from "lucide-react";
 import api from "../api/axios";
 import Modal from "../components/Modal";
+import FileUpload from "../components/FileUpload";
 import toast from "react-hot-toast";
 
 const MedicalRecords = () => {
@@ -23,6 +24,7 @@ const MedicalRecords = () => {
         weight: "70 kg",
         prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days" }],
         notes: "",
+        documents: [],
     });
 
     const fetchData = async () => {
@@ -87,10 +89,20 @@ const MedicalRecords = () => {
                 },
                 prescriptions: form.prescriptions.filter((p) => p.medicineName.trim()),
                 notes: form.notes,
+                documents: form.documents || [],
             };
             await api.post("/medical-records", payload);
             toast.success("Medical record created successfully");
             setModalOpen(false);
+            setForm((prev) => ({
+                ...prev,
+                diagnosis: "",
+                symptoms: "",
+                treatmentPlan: "",
+                notes: "",
+                documents: [],
+                prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days" }],
+            }));
             fetchData();
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to save medical record");
@@ -210,6 +222,29 @@ const MedicalRecords = () => {
                                             <div key={idx} className="bg-primary-50 text-primary-800 border border-primary-200 px-3 py-1.5 rounded-lg text-xs">
                                                 <span className="font-bold">{p.medicineName}</span> ({p.dosage}) - {p.frequency} for {p.duration}
                                             </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {r.documents && r.documents.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <Paperclip size={14} className="text-primary-600" /> Attached Documents ({r.documents.length})
+                                    </span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {r.documents.map((doc, idx) => (
+                                            <a
+                                                key={idx}
+                                                href={doc.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-primary-50 border border-gray-200 hover:border-primary-300 rounded-lg text-xs text-gray-700 hover:text-primary-700 transition-colors group"
+                                            >
+                                                <FileText size={13} className="text-primary-500" />
+                                                <span className="max-w-[180px] truncate font-medium">{doc.name || doc.originalName || "Document"}</span>
+                                                <ExternalLink size={12} className="text-gray-400 group-hover:text-primary-600" />
+                                            </a>
                                         ))}
                                     </div>
                                 </div>
@@ -377,6 +412,16 @@ const MedicalRecords = () => {
                             placeholder="Additional clinical notes..."
                             value={form.notes}
                             onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Supabase Storage Upload */}
+                    <div className="pt-2">
+                        <FileUpload
+                            value={form.documents}
+                            onChange={(docs) => setForm({ ...form, documents: docs })}
+                            folder="emr-records"
+                            label="Medical Attachments (Lab Scans, X-Rays, Discharge Summaries)"
                         />
                     </div>
 

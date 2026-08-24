@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Search, FlaskConical, TestTube, CheckCircle2, Clock, FileText, Printer } from "lucide-react";
+import { Plus, Search, FlaskConical, TestTube, CheckCircle2, Clock, FileText, Printer, Paperclip, ExternalLink, Download } from "lucide-react";
 import api from "../api/axios";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
+import FileUpload from "../components/FileUpload";
 import toast from "react-hot-toast";
 
 const Laboratory = () => {
@@ -23,6 +24,7 @@ const Laboratory = () => {
         testName: "",
         testCategory: "Blood",
         cost: 2000,
+        documents: [],
     });
 
     const [resultForm, setResultForm] = useState({
@@ -31,6 +33,7 @@ const Laboratory = () => {
         normalRange: "4.0 - 10.0 x10^9 / L",
         unit: "",
         technicianNotes: "Sample processed according to standard lab SOP.",
+        documents: [],
     });
 
     const fetchData = async () => {
@@ -68,6 +71,13 @@ const Laboratory = () => {
             await api.post("/laboratory", form);
             toast.success("Lab test requested successfully");
             setModalOpen(false);
+            setForm((prev) => ({
+                ...prev,
+                testName: "",
+                testCategory: "Blood",
+                cost: 2000,
+                documents: [],
+            }));
             fetchData();
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to create lab request");
@@ -92,6 +102,7 @@ const Laboratory = () => {
             normalRange: test.normalRange || "4.0 - 10.0",
             unit: test.unit || "mg/dL",
             technicianNotes: test.technicianNotes || "Verified by Senior Medical Technologist.",
+            documents: test.documents || [],
         });
         setResultModalOpen(true);
     };
@@ -200,6 +211,30 @@ const Laboratory = () => {
                                             <span className="text-primary-700 font-bold">{t.resultValue}</span>
                                         </div>
                                     )}
+
+                                    {t.documents && t.documents.length > 0 && (
+                                        <div className="pt-2 border-t border-gray-200">
+                                            <span className="font-semibold text-gray-700 flex items-center gap-1 mb-1">
+                                                <Paperclip size={12} className="text-primary-600" /> Files ({t.documents.length}):
+                                            </span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {t.documents.map((doc, idx) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={doc.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded text-[11px] text-primary-700 hover:bg-primary-50 truncate max-w-[140px]"
+                                                        title={doc.name || doc.originalName}
+                                                    >
+                                                        <FileText size={11} />
+                                                        <span className="truncate">{doc.name || doc.originalName || "Document"}</span>
+                                                        <ExternalLink size={10} />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -237,7 +272,7 @@ const Laboratory = () => {
 
             {/* Modal: Request Lab Test */}
             <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Request Laboratory Test">
-                <form onSubmit={handleCreateTest} className="space-y-4">
+                <form onSubmit={handleCreateTest} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
                     <div>
                         <label className="label-field">Patient</label>
                         <select
@@ -304,6 +339,16 @@ const Laboratory = () => {
                             />
                         </div>
                     </div>
+
+                    <div className="pt-2">
+                        <FileUpload
+                            value={form.documents}
+                            onChange={(docs) => setForm({ ...form, documents: docs })}
+                            folder="lab-requests"
+                            label="Attach Test Requisition / Clinical Orders"
+                        />
+                    </div>
+
                     <button type="submit" className="btn-primary w-full">
                         Submit Test Request
                     </button>
@@ -312,7 +357,7 @@ const Laboratory = () => {
 
             {/* Modal: Enter Result */}
             <Modal isOpen={resultModalOpen} onClose={() => setResultModalOpen(false)} title="Enter Laboratory Test Result">
-                <form onSubmit={handleSaveResult} className="space-y-4">
+                <form onSubmit={handleSaveResult} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
                     <div>
                         <label className="label-field">Sample Details</label>
                         <input
@@ -360,6 +405,16 @@ const Laboratory = () => {
                             onChange={(e) => setResultForm({ ...resultForm, technicianNotes: e.target.value })}
                         />
                     </div>
+
+                    <div className="pt-2">
+                        <FileUpload
+                            value={resultForm.documents}
+                            onChange={(docs) => setResultForm({ ...resultForm, documents: docs })}
+                            folder="lab-results"
+                            label="Attach Scanned Lab Report / Imaging Result (Stored in Supabase 'Uploads')"
+                        />
+                    </div>
+
                     <button type="submit" className="btn-primary w-full">
                         Complete & Publish Report
                     </button>
@@ -417,6 +472,28 @@ const Laboratory = () => {
                         {selectedTest.technicianNotes && (
                             <div className="text-xs text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
                                 <span className="font-bold text-amber-800">Technician Remarks:</span> {selectedTest.technicianNotes}
+                            </div>
+                        )}
+
+                        {selectedTest.documents && selectedTest.documents.length > 0 && (
+                            <div className="space-y-2 border-t pt-3">
+                                <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                                    <Paperclip size={14} className="text-primary-600" /> Attached Diagnostic Files ({selectedTest.documents.length})
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {selectedTest.documents.map((doc, idx) => (
+                                        <a
+                                            key={idx}
+                                            href={doc.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-between p-2 bg-gray-50 border rounded-lg text-xs hover:border-primary-400 text-gray-700 hover:text-primary-700"
+                                        >
+                                            <span className="truncate font-medium">{doc.name || doc.originalName || "Attached Report"}</span>
+                                            <ExternalLink size={13} />
+                                        </a>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
