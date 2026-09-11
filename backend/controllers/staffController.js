@@ -16,6 +16,7 @@ const mapStaff = (s) => {
         joinDate: s.join_date,
         status: s.status,
         attendance: typeof s.attendance === "string" ? JSON.parse(s.attendance) : s.attendance || [],
+        leaves: typeof s.leaves === "string" ? JSON.parse(s.leaves) : s.leaves || [],
         createdAt: s.created_at,
         updatedAt: s.updated_at,
     };
@@ -159,15 +160,39 @@ const recordAttendance = async (req, res) => {
         if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
 
         const staff = rows[0];
-        const attendance = typeof staff.attendance === "string" ? JSON.parse(staff.attendance) : staff.attendance || [];
-        attendance.push({ date: date || new Date().toISOString().split("T")[0], status });
+        let attendance = typeof staff.attendance === "string" ? JSON.parse(staff.attendance) : staff.attendance || [];
+
+        // Target date - default to today in YYYY-MM-DD
+        const targetDate = date || new Date().toISOString().split("T")[0];
+
+        // Check if an attendance record for this date already exists (upsert)
+        const existingIdx = attendance.findIndex((a) => a.date === targetDate);
+        if (existingIdx >= 0) {
+            attendance[existingIdx] = {
+                ...attendance[existingIdx],
+                status,
+                updatedAt: new Date().toISOString(),
+                markedBy: req.user?.name || "Admin",
+            };
+        } else {
+            attendance.unshift({
+                date: targetDate,
+                status,
+                markedAt: new Date().toISOString(),
+                markedBy: req.user?.name || "Admin",
+            });
+        }
 
         const updated = await db.query(
             `UPDATE staff SET attendance = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
             [JSON.stringify(attendance), id]
         );
 
-        res.json(mapStaff(updated.rows[0]));
+        res.json({
+            message: `Attendance marked as ${status} for ${targetDate}`,
+            staff: mapStaff(updated.rows[0]),
+            attendanceRecord: attendance[existingIdx >= 0 ? existingIdx : 0],
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -176,11 +201,105 @@ const recordAttendance = async (req, res) => {
 const requestLeave = async (req, res) => {
     try {
         const { id } = req.params;
-        const { leaveType, startDate, endDate, reason } = req.body;
+        const { leaveType, startDate, endDate, reason, status = "Approved" } = req.body;
+
+        if (!leaveType || !startDate || !endDate) {
+            return res.status(400).json({ message: "Leave type, start date, and end date are required." });
+        }
+
         const { rows } = await db.query("SELECT * FROM staff WHERE id = $1", [id]);
         if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
 
-        res.json({ message: "Leave request submitted successfully", leaveDetails: { leaveType, startDate, endDate, reason } });
+        const staff = rows[0];
+        let leaves = typeof staff.leaves === "string" ? JSON.parse(staff.leaves) : staff.leaves || [];
+
+        // Calculate days duration
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        const newLeave = {
+            id: `LV-${Date.now().toString().slice(-6)}`,
+            leaveType,
+            startDate,
+            endDate,
+            days: diffDays > 0 ? diffDays : 1,
+            reason: reason || "",
+            status: status || "Approved",
+            appliedAt: new Date().toISOString(),
+            appliedBy: req.user?.name || "Staff",
+        };
+
+        leaves.unshift(newLeave);
+
+        const updated = await db.query(
+            `UPDATE staff SET leaves = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+            [JSON.stringify(leaves), id]
+        );
+
+        res.status(201).json({
+            message: `Leave recorded successfully for ${staff.name}`,
+            leave: newLeave,
+            staff: mapStaff(updated.rows[0]),
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updateLeaveStatus = async (req, res) => {
+    try {
+        const { id, leaveId } = req.params;
+        const { status } = req.body;
+
+        const { rows } = await db.query("SELECT * FROM staff WHERE id = $1", [id]);
+        if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
+
+        const staff = rows[0];
+        let leaves = typeof staff.leaves === "string" ? JSON.parse(staff.leaves) : staff.leaves || [];
+
+        const target = leaves.find((l) => l.id === leaveId);
+        if (!target) return res.status(404).json({ message: "Leave record not found" });
+
+        target.status = status;
+        target.reviewedAt = new Date().toISOString();
+        target.reviewedBy = req.user?.name || "Admin";
+
+        const updated = await db.query(
+            `UPDATE staff SET leaves = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+            [JSON.stringify(leaves), id]
+        );
+
+        res.json({
+            message: `Leave status updated to ${status}`,
+            staff: mapStaff(updated.rows[0]),
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const deleteLeave = async (req, res) => {
+    try {
+        const { id, leaveId } = req.params;
+        const { rows } = await db.query("SELECT * FROM staff WHERE id = $1", [id]);
+        if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
+
+        const staff = rows[0];
+        let leaves = typeof staff.leaves === "string" ? JSON.parse(staff.leaves) : staff.leaves || [];
+
+        const filtered = leaves.filter((l) => l.id !== leaveId);
+
+        const updated = await db.query(
+            `UPDATE staff SET leaves = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+            [JSON.stringify(filtered), id]
+        );
+
+        res.json({
+            message: "Leave record removed",
+            staff: mapStaff(updated.rows[0]),
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -194,4 +313,6 @@ module.exports = {
     deleteStaff,
     recordAttendance,
     requestLeave,
+    updateLeaveStatus,
+    deleteLeave,
 };

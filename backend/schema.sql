@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS staff (
   join_date DATE DEFAULT CURRENT_DATE,
   status VARCHAR(50) DEFAULT 'Active',
   attendance JSONB DEFAULT '[]'::jsonb,
+  leaves JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
