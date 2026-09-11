@@ -110,7 +110,8 @@ const Laboratory = () => {
     const handleSaveResult = async (e) => {
         e.preventDefault();
         try {
-            await api.put(`/laboratory/${selectedTest._id}`, {
+            const testId = selectedTest?._id || selectedTest?.id;
+            await api.put(`/laboratory/${testId}`, {
                 ...resultForm,
                 status: "Completed",
             });
@@ -423,7 +424,7 @@ const Laboratory = () => {
 
             {/* Modal: Printable Report */}
             <Modal isOpen={printModalOpen} onClose={() => setPrintModalOpen(false)} title="Official Laboratory Report">
-                {selectedTest && (
+                {printModalOpen && selectedTest && (
                     <div className="space-y-6 p-4 bg-white border border-gray-200 rounded-xl">
                         <div className="flex justify-between border-b pb-4">
                             <div>
@@ -431,8 +432,8 @@ const Laboratory = () => {
                                 <p className="text-xs text-gray-500">Central Laboratory Division</p>
                             </div>
                             <div className="text-right text-xs text-gray-500">
-                                <p>Date: {new Date(selectedTest.completedAt || selectedTest.updatedAt).toLocaleDateString()}</p>
-                                <p>Report ID: LAB-{selectedTest._id.substring(0, 8).toUpperCase()}</p>
+                                <p>Date: {new Date(selectedTest.completedAt || selectedTest.updatedAt || Date.now()).toLocaleDateString()}</p>
+                                <p>Report ID: LAB-{String(selectedTest._id || selectedTest.id || "").padStart(6, "0").toUpperCase()}</p>
                             </div>
                         </div>
 
