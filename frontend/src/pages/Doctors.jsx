@@ -37,8 +37,10 @@ const validateDoctor = (data) => {
   const rawDigits = (data.phone || "").replace(/\D/g, "");
   if (!data.phone || !data.phone.trim()) {
     errors.phone = "Phone number is required.";
-  } else if (rawDigits.length < 7 || rawDigits.length > 15) {
-    errors.phone = "Enter a valid phone number (7 to 15 digits).";
+  } else if (!/^[0-9\s\-()+]+$/.test(data.phone.trim())) {
+    errors.phone = "Phone number can only contain digits.";
+  } else if (rawDigits.length !== 10) {
+    errors.phone = "Phone number must be exactly 10 digits.";
   }
 
   if (data.email && data.email.trim()) {
@@ -328,8 +330,9 @@ const Doctors = () => {
                 value={form.phone}
                 onChange={handleChange}
                 onBlur={handleBlur}
+                maxLength={14}
                 className={`input-field ${touched.phone && errors.phone ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
-                placeholder="+1-555-0150"
+                placeholder="10-digit number (e.g. 0712345678)"
               />
               {touched.phone && errors.phone && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">

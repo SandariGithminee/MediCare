@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { formatErrorMessage } = require("../utils/errorHandler");
 
 const mapStaff = (s) => {
     if (!s) return null;
@@ -29,7 +30,7 @@ const getStaff = async (req, res) => {
         if (search) {
             queryText = `
         SELECT * FROM staff 
-        WHERE name ILIKE $1 OR employee_id ILIKE $1 OR department ILIKE $1 
+        WHERE name ILIKE $1 OR role ILIKE $1 OR department ILIKE $1 OR employee_id ILIKE $1
         ORDER BY employee_id ASC
       `;
             params = [`%${search}%`];
@@ -38,17 +39,17 @@ const getStaff = async (req, res) => {
         const { rows } = await db.query(queryText, params);
         res.json(rows.map(mapStaff));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: formatErrorMessage(error) });
     }
 };
 
 const getStaffById = async (req, res) => {
     try {
         const { rows } = await db.query("SELECT * FROM staff WHERE id = $1", [req.params.id]);
-        if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
+        if (!rows.length) return res.status(404).json({ message: "Staff member not found." });
         res.json(mapStaff(rows[0]));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: formatErrorMessage(error) });
     }
 };
 
@@ -59,6 +60,17 @@ const createStaff = async (req, res) => {
         const employeeId = req.body.employeeId || `EMP-${String(count + 101).padStart(4, "0")}`;
         const { name, role, department, email, phone, salary, joinDate, status } = req.body;
 
+        if (!name || name.trim().length < 2) {
+            return res.status(400).json({ message: "Staff name is required (at least 2 characters)." });
+        }
+
+        if (phone) {
+            const rawDigits = phone.replace(/[^0-9]/g, "");
+            if (rawDigits.length !== 10) {
+                return res.status(400).json({ message: "Phone number must be exactly 10 digits." });
+            }
+        }
+
         const { rows } = await db.query(
             `INSERT INTO staff 
        (employee_id, name, role, department, email, phone, salary, join_date, status) 
@@ -66,11 +78,11 @@ const createStaff = async (req, res) => {
        RETURNING *`,
             [
                 employeeId,
-                name,
-                role,
-                department,
-                email,
-                phone,
+                name.trim(),
+                role || "Nurse",
+                department || "General",
+                email ? email.trim() : null,
+                phone ? phone.trim() : null,
                 salary ? Number(salary) : 0,
                 joinDate || new Date().toISOString().split("T")[0],
                 status || "Active",
@@ -79,13 +91,20 @@ const createStaff = async (req, res) => {
 
         res.status(201).json(mapStaff(rows[0]));
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ message: formatErrorMessage(error) });
     }
 };
 
 const updateStaff = async (req, res) => {
     try {
         const { employeeId, name, role, department, email, phone, salary, joinDate, status } = req.body;
+
+        if (phone) {
+            const rawDigits = phone.replace(/[^0-9]/g, "");
+            if (rawDigits.length !== 10) {
+                return res.status(400).json({ message: "Phone number must be exactly 10 digits." });
+            }
+        }
 
         const { rows } = await db.query(
             `UPDATE staff SET 
@@ -103,11 +122,11 @@ const updateStaff = async (req, res) => {
        RETURNING *`,
             [
                 employeeId,
-                name,
+                name ? name.trim() : null,
                 role,
                 department,
-                email,
-                phone,
+                email ? email.trim() : null,
+                phone ? phone.trim() : null,
                 salary !== undefined ? Number(salary) : null,
                 joinDate,
                 status,
@@ -115,10 +134,20 @@ const updateStaff = async (req, res) => {
             ]
         );
 
-        if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
+        if (!rows.length) return res.status(404).json({ message: "Staff member not found." });
         res.json(mapStaff(rows[0]));
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ message: formatErrorMessage(error) });
+    }
+};
+
+const deleteStaff = async (req, res) => {
+    try {
+        const { rows } = await db.query("DELETE FROM staff WHERE id = $1 RETURNING *", [req.params.id]);
+        if (!rows.length) return res.status(404).json({ message: "Staff member not found." });
+        res.json({ message: "Staff member removed successfully." });
+    } catch (error) {
+        res.status(500).json({ message: formatErrorMessage(error) });
     }
 };
 

@@ -76,6 +76,13 @@ const createDoctor = async (req, res) => {
       return res.status(400).json({ message: "Department is required." });
     }
 
+    if (phone) {
+      const rawDigits = phone.replace(/[^0-9]/g, "");
+      if (rawDigits.length !== 10) {
+        return res.status(400).json({ message: "Phone number must be exactly 10 digits." });
+      }
+    }
+
     const { rows } = await db.query(
       `INSERT INTO doctors 
        (name, email, phone, specialization, department, qualification, consultation_fee, available_days, status) 
@@ -113,6 +120,13 @@ const updateDoctor = async (req, res) => {
       availableDays,
       status,
     } = req.body;
+
+    if (phone) {
+      const rawDigits = phone.replace(/[^0-9]/g, "");
+      if (rawDigits.length !== 10) {
+        return res.status(400).json({ message: "Phone number must be exactly 10 digits." });
+      }
+    }
 
     const { rows } = await db.query(
       `UPDATE doctors SET 

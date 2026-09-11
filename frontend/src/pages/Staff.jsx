@@ -39,13 +39,20 @@ const Staff = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const rawDigits = (form.phone || "").replace(/\D/g, "");
+        if (!form.phone || !form.phone.trim()) {
+            return toast.error("Phone number is required.");
+        }
+        if (rawDigits.length !== 10) {
+            return toast.error("Phone number must be exactly 10 digits.");
+        }
         try {
             await api.post("/staff", form);
             toast.success("Employee registered");
             setModalOpen(false);
             fetchStaff(search);
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to add employee");
+            toast.error(error.friendlyMessage || error.response?.data?.message || "Failed to add employee");
         }
     };
 
@@ -183,10 +190,12 @@ const Staff = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="label-field">Phone</label>
+                            <label className="label-field">Phone (10 Digits)</label>
                             <input
                                 required
                                 className="input-field"
+                                maxLength={14}
+                                placeholder="e.g. 0712345678"
                                 value={form.phone}
                                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                             />

@@ -31,8 +31,10 @@ const validatePatientInput = (data, isUpdate = false) => {
 
   if (!isUpdate || data.phone !== undefined) {
     const rawDigits = (data.phone || "").replace(/[^0-9]/g, "");
-    if (!data.phone || rawDigits.length < 7) {
-      errors.phone = "A valid phone number with at least 7 digits is required.";
+    if (!data.phone || !data.phone.trim()) {
+      errors.phone = "Phone number is required.";
+    } else if (rawDigits.length !== 10) {
+      errors.phone = "Phone number must be exactly 10 digits.";
     }
   }
 
