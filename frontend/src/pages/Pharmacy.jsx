@@ -9,8 +9,10 @@ const Pharmacy = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
     const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
     const [selectedMed, setSelectedMed] = useState(null);
+    const [editingMed, setEditingMed] = useState(null);
     const [dispenseQty, setDispenseQty] = useState(1);
 
     const [form, setForm] = useState({
@@ -21,6 +23,18 @@ const Pharmacy = () => {
         quantityInStock: 100,
         minStockLevel: 20,
         unitPrice: 25,
+        expiryDate: "",
+        location: "Main Pharmacy",
+    });
+
+    const [editForm, setEditForm] = useState({
+        name: "",
+        category: "Tablet",
+        manufacturer: "",
+        batchNumber: "",
+        quantityInStock: 0,
+        minStockLevel: 10,
+        unitPrice: 0,
         expiryDate: "",
         location: "Main Pharmacy",
     });
@@ -73,6 +87,42 @@ const Pharmacy = () => {
             fetchMedicines(search);
         } catch (error) {
             toast.error(error.response?.data?.message || "Dispense failed");
+        }
+    };
+
+    const openEditModal = (med) => {
+        setEditingMed(med);
+        let formattedDate = "";
+        if (med.expiryDate) {
+            try {
+                formattedDate = new Date(med.expiryDate).toISOString().split("T")[0];
+            } catch {}
+        }
+        setEditForm({
+            name: med.name || "",
+            category: med.category || "Tablet",
+            manufacturer: med.manufacturer || "",
+            batchNumber: med.batchNumber || "",
+            quantityInStock: med.quantityInStock ?? 0,
+            minStockLevel: med.minStockLevel ?? 10,
+            unitPrice: med.unitPrice ?? 0,
+            expiryDate: formattedDate,
+            location: med.location || "Main Pharmacy",
+        });
+        setEditModalOpen(true);
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        if (!editingMed) return;
+        try {
+            const medId = editingMed._id || editingMed.id;
+            await api.put(`/pharmacy/${medId}`, editForm);
+            toast.success("Medicine updated successfully");
+            setEditModalOpen(false);
+            fetchMedicines(search);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to update medicine");
         }
     };
 
@@ -170,7 +220,7 @@ const Pharmacy = () => {
                                             <td className="px-6 py-4 text-xs text-gray-500">
                                                 {new Date(m.expiryDate).toLocaleDateString()}
                                             </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
+                                            <td className="px-6 py-4 text-right space-x-1.5">
                                                 <button
                                                     onClick={() => openDispenseModal(m)}
                                                     className="px-3 py-1.5 bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-semibold rounded-lg transition"
@@ -178,8 +228,16 @@ const Pharmacy = () => {
                                                     Dispense
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(m._id)}
-                                                    className="px-2.5 py-1.5 text-coral-600 hover:bg-coral-50 rounded-lg transition"
+                                                    onClick={() => openEditModal(m)}
+                                                    className="p-1.5 text-accent-600 hover:bg-accent-50 rounded-lg transition inline-flex items-center justify-center"
+                                                    title="Edit Medicine"
+                                                >
+                                                    <Edit3 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(m._id || m.id)}
+                                                    className="p-1.5 text-coral-600 hover:bg-coral-50 rounded-lg transition inline-flex items-center justify-center"
+                                                    title="Delete Medicine"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
@@ -297,6 +355,124 @@ const Pharmacy = () => {
                     <button type="submit" className="btn-primary w-full">
                         Save Medicine Item
                     </button>
+                </form>
+            </Modal>
+
+            {/* Modal: Edit Medicine */}
+            <Modal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Medicine Item">
+                <form onSubmit={handleUpdate} className="space-y-4">
+                    <div>
+                        <label className="label-field">Medicine Name</label>
+                        <input
+                            required
+                            className="input-field"
+                            placeholder="e.g. Paracetamol 500mg"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="label-field">Form / Category</label>
+                            <select
+                                className="input-field"
+                                value={editForm.category}
+                                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                            >
+                                <option>Tablet</option>
+                                <option>Capsule</option>
+                                <option>Syrup</option>
+                                <option>Injection</option>
+                                <option>Ointment</option>
+                                <option>Equipment</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label-field">Batch Number</label>
+                            <input
+                                required
+                                className="input-field"
+                                placeholder="B-9941"
+                                value={editForm.batchNumber}
+                                onChange={(e) => setEditForm({ ...editForm, batchNumber: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div>
+                            <label className="label-field">Current Stock</label>
+                            <input
+                                type="number"
+                                required
+                                className="input-field"
+                                value={editForm.quantityInStock}
+                                onChange={(e) => setEditForm({ ...editForm, quantityInStock: Number(e.target.value) })}
+                            />
+                        </div>
+                        <div>
+                            <label className="label-field">Min Threshold</label>
+                            <input
+                                type="number"
+                                required
+                                className="input-field"
+                                value={editForm.minStockLevel}
+                                onChange={(e) => setEditForm({ ...editForm, minStockLevel: Number(e.target.value) })}
+                            />
+                        </div>
+                        <div>
+                            <label className="label-field">Unit Price (LKR)</label>
+                            <input
+                                type="number"
+                                required
+                                className="input-field"
+                                value={editForm.unitPrice}
+                                onChange={(e) => setEditForm({ ...editForm, unitPrice: Number(e.target.value) })}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="label-field">Manufacturer</label>
+                            <input
+                                className="input-field"
+                                placeholder="e.g. GSK / Pfizer"
+                                value={editForm.manufacturer}
+                                onChange={(e) => setEditForm({ ...editForm, manufacturer: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="label-field">Expiry Date</label>
+                            <input
+                                type="date"
+                                required
+                                className="input-field"
+                                value={editForm.expiryDate}
+                                onChange={(e) => setEditForm({ ...editForm, expiryDate: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="label-field">Storage Location</label>
+                        <input
+                            className="input-field"
+                            placeholder="e.g. Main Pharmacy / Shelf A-3"
+                            value={editForm.location}
+                            onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                        />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <button type="submit" className="btn-primary flex-1">
+                            Save Changes
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEditModalOpen(false)}
+                            className="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </form>
             </Modal>
 
