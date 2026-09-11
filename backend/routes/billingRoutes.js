@@ -13,7 +13,7 @@ router.route("/").get(protect, getBillings).post(protect, authorize("admin", "ac
 router
   .route("/:id")
   .get(protect, getBillingById)
-  .put(protect, authorize("admin", "accountant", "receptionist"), updateBilling)
+  .put(protect, authorize("admin", "accountant", "receptionist", "cashier", "doctor", "nurse", "pharmacist"), updateBilling)
   .delete(protect, authorize("admin"), deleteBilling);
 
 module.exports = router;

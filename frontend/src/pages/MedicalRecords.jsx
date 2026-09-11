@@ -87,7 +87,9 @@ const MedicalRecords = () => {
                     temperature: form.temperature,
                     weight: form.weight,
                 },
-                prescriptions: form.prescriptions.filter((p) => p.medicineName.trim()),
+                prescriptions: form.prescriptions
+                    .filter((p) => p.medicineName.trim())
+                    .map((p) => ({ ...p, status: p.status || "Pending" })),
                 notes: form.notes,
                 documents: form.documents || [],
             };
@@ -218,11 +220,31 @@ const MedicalRecords = () => {
                                         <Pill size={14} className="text-primary-600" /> Prescribed Medications
                                     </span>
                                     <div className="flex flex-wrap gap-2">
-                                        {r.prescriptions.map((p, idx) => (
-                                            <div key={idx} className="bg-primary-50 text-primary-800 border border-primary-200 px-3 py-1.5 rounded-lg text-xs">
-                                                <span className="font-bold">{p.medicineName}</span> ({p.dosage}) - {p.frequency} for {p.duration}
-                                            </div>
-                                        ))}
+                                        {r.prescriptions.map((p, idx) => {
+                                            const isDispensed = p.status === "Dispensed";
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs border flex items-center gap-2 ${
+                                                        isDispensed
+                                                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                                            : "bg-primary-50 text-primary-800 border-primary-200"
+                                                    }`}
+                                                >
+                                                    <span className="font-bold">{p.medicineName}</span>
+                                                    <span className="opacity-75">({p.dosage} · {p.frequency} · {p.duration})</span>
+                                                    <span
+                                                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                                            isDispensed
+                                                                ? "bg-emerald-200/60 text-emerald-900"
+                                                                : "bg-amber-100 text-amber-800"
+                                                        }`}
+                                                    >
+                                                        {isDispensed ? "✓ Dispensed" : "⏳ Pending Pharmacy"}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}

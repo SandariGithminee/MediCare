@@ -107,7 +107,8 @@ body {
 
   /* When printing a specific formal report or receipt, ensure clean document formatting */
   .printable-report,
-  .printable-receipt {
+  .printable-receipt,
+  .printable-slip {
     border: none !important;
     box-shadow: none !important;
     padding: 10px 0 !important;

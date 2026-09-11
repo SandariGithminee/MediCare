@@ -7,8 +7,14 @@ const {
     updateMedicine,
     deleteMedicine,
     dispenseMedicine,
+    getPrescriptions,
+    dispensePrescription,
 } = require("../controllers/pharmacyController");
 const { protect, authorize } = require("../middleware/authMiddleware");
+
+// Prescription processing routes (Must be placed before /:id)
+router.get("/prescriptions", protect, getPrescriptions);
+router.post("/prescriptions/:recordId/dispense", protect, authorize("admin", "pharmacist", "doctor"), dispensePrescription);
 
 router.route("/").get(protect, getMedicines).post(protect, authorize("admin", "pharmacist"), createMedicine);
 router
