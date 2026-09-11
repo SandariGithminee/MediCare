@@ -19,8 +19,42 @@ const Billing = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [statusForm, setStatusForm] = useState({
+    status: "Pending",
+    paidAmount: 0,
+    paymentMethod: "Cash",
+  });
+
+  const openStatusModal = (bill) => {
+    setSelectedBill(bill);
+    setStatusForm({
+      status: bill.status || "Pending",
+      paidAmount: bill.paidAmount ?? 0,
+      paymentMethod: bill.paymentMethod || "Cash",
+    });
+    setStatusModalOpen(true);
+  };
+
+  const handleStatusSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedBill) return;
+    try {
+      const billId = selectedBill._id || selectedBill.id;
+      await api.put(`/billing/${billId}`, {
+        status: statusForm.status,
+        paidAmount: Number(statusForm.paidAmount),
+        paymentMethod: statusForm.paymentMethod,
+      });
+      toast.success(`Payment updated to ${statusForm.status}`);
+      setStatusModalOpen(false);
+      fetchAll();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update payment status");
+    }
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -134,7 +168,14 @@ const Billing = () => {
                       </p>
                     </div>
                   </div>
-                  <Badge status={b.status} />
+                  <button
+                    type="button"
+                    onClick={() => openStatusModal(b)}
+                    className="cursor-pointer hover:opacity-80 transition transform hover:scale-105"
+                    title="Click to update payment status"
+                  >
+                    <Badge status={b.status} />
+                  </button>
                 </div>
                 <div className="space-y-1 text-xs text-gray-500 mb-4 max-h-24 overflow-y-auto bg-gray-50 p-2.5 rounded-lg">
                   {b.items?.map((it, idx) => (
@@ -161,14 +202,26 @@ const Billing = () => {
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
-                    onClick={() => openReceipt(b)}
-                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary-700 bg-primary-50 py-2 rounded-lg hover:bg-primary-100 transition"
+                    type="button"
+                    onClick={() => openStatusModal(b)}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 py-2 rounded-lg hover:bg-emerald-100 transition border border-emerald-200/60 shadow-xs"
+                    title="Change payment status & amount"
                   >
-                    <Printer size={14} /> Print Receipt
+                    <CreditCard size={14} /> Update Status
                   </button>
                   <button
-                    onClick={() => handleDelete(b._id)}
-                    className="flex items-center justify-center gap-1 text-xs font-medium text-coral-600 bg-coral-50 px-3 py-2 rounded-lg hover:bg-coral-100 transition"
+                    type="button"
+                    onClick={() => openReceipt(b)}
+                    className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary-700 bg-primary-50 px-3 py-2 rounded-lg hover:bg-primary-100 transition"
+                    title="Print Receipt"
+                  >
+                    <Printer size={14} /> Receipt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(b._id || b.id)}
+                    className="flex items-center justify-center text-xs font-medium text-coral-600 bg-coral-50 px-2.5 py-2 rounded-lg hover:bg-coral-100 transition"
+                    title="Delete Invoice"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -348,6 +401,147 @@ const Billing = () => {
               </button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal: Update Payment Status */}
+      <Modal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        title={selectedBill ? `Update Payment - ${selectedBill.invoiceNumber}` : "Update Payment Status"}
+      >
+        {selectedBill && (
+          <form onSubmit={handleStatusSubmit} className="space-y-4">
+            <div className="bg-gray-50 p-3.5 rounded-xl space-y-1.5 text-xs border border-gray-100">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Patient:</span>
+                <span className="font-bold text-gray-800">
+                  {selectedBill.patient ? `${selectedBill.patient.firstName} ${selectedBill.patient.lastName}` : "Patient"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Total Invoice Amount:</span>
+                <span className="font-bold text-gray-800">LKR {Number(selectedBill.totalAmount || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Currently Paid:</span>
+                <span className="font-semibold text-primary-600">LKR {Number(selectedBill.paidAmount || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-200/60 pt-1.5">
+                <span className="text-gray-500 font-medium">Balance Due:</span>
+                <span className="font-bold text-coral-600">
+                  LKR {Math.max(0, Number(selectedBill.totalAmount || 0) - Number(statusForm.paidAmount || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Status Selector */}
+            <div>
+              <label className="label-field">Payment Status</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: "Paid", label: "Paid", color: "border-emerald-500 bg-emerald-50 text-emerald-800" },
+                  { value: "Partial", label: "Partial", color: "border-amber-500 bg-amber-50 text-amber-800" },
+                  { value: "Pending", label: "Pending", color: "border-coral-500 bg-coral-50 text-coral-800" },
+                ].map((st) => (
+                  <button
+                    type="button"
+                    key={st.value}
+                    onClick={() => {
+                      const newStatus = st.value;
+                      let newPaid = statusForm.paidAmount;
+                      if (newStatus === "Paid") newPaid = Number(selectedBill.totalAmount || 0);
+                      else if (newStatus === "Pending") newPaid = 0;
+                      setStatusForm({ ...statusForm, status: newStatus, paidAmount: newPaid });
+                    }}
+                    className={`py-2 px-3 text-xs font-bold rounded-xl border text-center transition ${
+                      statusForm.status === st.value
+                        ? `${st.color} ring-2 ring-offset-1 ring-primary-500 shadow-sm`
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Paid Amount */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="label-field mb-0">Paid Amount (LKR)</label>
+                <div className="space-x-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStatusForm({
+                        ...statusForm,
+                        paidAmount: Number(selectedBill.totalAmount || 0),
+                        status: "Paid",
+                      })
+                    }
+                    className="text-[11px] text-primary-600 hover:underline font-semibold"
+                  >
+                    Full (LKR {Number(selectedBill.totalAmount || 0).toLocaleString()})
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setStatusForm({ ...statusForm, paidAmount: 0, status: "Pending" })}
+                    className="text-[11px] text-gray-500 hover:underline"
+                  >
+                    Zero (0)
+                  </button>
+                </div>
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={Number(selectedBill.totalAmount || 0)}
+                required
+                className="input-field"
+                value={statusForm.paidAmount}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  const total = Number(selectedBill.totalAmount || 0);
+                  let derivedStatus = statusForm.status;
+                  if (val >= total && total > 0) derivedStatus = "Paid";
+                  else if (val > 0) derivedStatus = "Partial";
+                  else derivedStatus = "Pending";
+                  setStatusForm({ ...statusForm, paidAmount: val, status: derivedStatus });
+                }}
+              />
+            </div>
+
+            {/* Payment Method */}
+            <div>
+              <label className="label-field">Payment Method</label>
+              <select
+                className="input-field"
+                value={statusForm.paymentMethod}
+                onChange={(e) => setStatusForm({ ...statusForm, paymentMethod: e.target.value })}
+              >
+                <option value="Cash">Cash</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Debit Card">Debit Card</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Bank Transfer">Bank Transfer / Online</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="submit" className="btn-primary flex-1">
+                Save Payment Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusModalOpen(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         )}
       </Modal>
     </div>
