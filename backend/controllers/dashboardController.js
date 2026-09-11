@@ -73,6 +73,8 @@ const getStats = async (req, res) => {
       pharmacyAlerts: {
         lowStockMedicines,
         nearExpiryMedicines,
+        lowStockItems: lowStockMedicines,
+        nearExpiryItems: nearExpiryMedicines,
         lowStockCount: lowStockMedicines.length,
         nearExpiryCount: nearExpiryMedicines.length,
       },

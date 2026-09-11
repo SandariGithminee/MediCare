@@ -85,9 +85,10 @@ const Dashboard = () => {
     setLoadingRegs(true);
     try {
       const { data } = await api.get("/auth/registrations");
-      setRegistrations(data);
+      setRegistrations(Array.isArray(data) ? data : (data?.registrations || []));
     } catch (error) {
       console.error("Failed to load registrations:", error);
+      setRegistrations([]);
     } finally {
       setLoadingRegs(false);
     }
@@ -100,12 +101,29 @@ const Dashboard = () => {
     }
   }, [isAdmin]);
 
-  const pendingCount = useMemo(() => {
-    return registrations.filter((r) => r.status === "Pending" || r.isApproved === false).length;
+  const safeRegistrations = useMemo(() => {
+    return Array.isArray(registrations) ? registrations : [];
   }, [registrations]);
 
+  const pendingCount = useMemo(() => {
+    return safeRegistrations.filter((r) => r && (r.status === "Pending" || r.isApproved === false)).length;
+  }, [safeRegistrations]);
+
+  const approvedCount = useMemo(() => {
+    return safeRegistrations.filter((r) => r && r.status === "Approved").length;
+  }, [safeRegistrations]);
+
+  const rejectedCount = useMemo(() => {
+    return safeRegistrations.filter((r) => r && r.status === "Rejected").length;
+  }, [safeRegistrations]);
+
+  const totalCount = useMemo(() => {
+    return safeRegistrations.length;
+  }, [safeRegistrations]);
+
   const filteredRegistrations = useMemo(() => {
-    return registrations.filter((r) => {
+    return safeRegistrations.filter((r) => {
+      if (!r) return false;
       // Status match
       if (regFilter === "Pending" && r.status !== "Pending" && r.isApproved !== false) return false;
       if (regFilter === "Approved" && r.status !== "Approved") return false;
@@ -122,7 +140,7 @@ const Dashboard = () => {
 
       return true;
     });
-  }, [registrations, regFilter, regSearch]);
+  }, [safeRegistrations, regFilter, regSearch]);
 
   const handleApprove = async (id, name) => {
     try {
@@ -176,7 +194,11 @@ const Dashboard = () => {
   ];
 
   const pharmacyAlerts = stats?.pharmacyAlerts;
-  const hasAlerts = pharmacyAlerts && (pharmacyAlerts.lowStockCount > 0 || pharmacyAlerts.nearExpiryCount > 0);
+  const lowStockList = pharmacyAlerts?.lowStockMedicines || pharmacyAlerts?.lowStockItems || [];
+  const nearExpiryList = pharmacyAlerts?.nearExpiryMedicines || pharmacyAlerts?.nearExpiryItems || [];
+  const lowStockCount = pharmacyAlerts?.lowStockCount ?? lowStockList.length;
+  const nearExpiryCount = pharmacyAlerts?.nearExpiryCount ?? nearExpiryList.length;
+  const hasAlerts = (lowStockCount > 0 || nearExpiryCount > 0);
 
   return (
     <div className="space-y-6">
@@ -241,7 +263,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="card p-4 border border-gray-100">
               <span className="text-xs text-gray-400 font-medium block">Total Registered Users</span>
-              <span className="text-2xl font-bold text-gray-800 mt-1 block">{registrations.length}</span>
+              <span className="text-2xl font-bold text-gray-800 mt-1 block">{totalCount}</span>
             </div>
             <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-50/20">
               <span className="text-xs text-amber-700 font-semibold block flex items-center gap-1">
@@ -253,17 +275,13 @@ const Dashboard = () => {
               <span className="text-xs text-emerald-700 font-semibold block flex items-center gap-1">
                 <Check size={12} /> Approved Accounts
               </span>
-              <span className="text-2xl font-bold text-emerald-600 mt-1 block">
-                {registrations.filter((r) => r.status === "Approved").length}
-              </span>
+              <span className="text-2xl font-bold text-emerald-600 mt-1 block">{approvedCount}</span>
             </div>
             <div className="card p-4 border-l-4 border-l-rose-500 bg-rose-50/20">
               <span className="text-xs text-rose-700 font-semibold block flex items-center gap-1">
                 <X size={12} /> Rejected Requests
               </span>
-              <span className="text-2xl font-bold text-rose-600 mt-1 block">
-                {registrations.filter((r) => r.status === "Rejected").length}
-              </span>
+              <span className="text-2xl font-bold text-rose-600 mt-1 block">{rejectedCount}</span>
             </div>
           </div>
 
@@ -298,17 +316,9 @@ const Dashboard = () => {
               <span className="text-gray-400 font-medium shrink-0">Filter Status:</span>
               {[
                 { key: "Pending", label: "Pending Review", count: pendingCount },
-                {
-                  key: "Approved",
-                  label: "Approved",
-                  count: registrations.filter((r) => r.status === "Approved").length,
-                },
-                {
-                  key: "Rejected",
-                  label: "Rejected",
-                  count: registrations.filter((r) => r.status === "Rejected").length,
-                },
-                { key: "All", label: "All Registrations", count: registrations.length },
+                { key: "Approved", label: "Approved", count: approvedCount },
+                { key: "Rejected", label: "Rejected", count: rejectedCount },
+                { key: "All", label: "All Registrations", count: totalCount },
               ].map(({ key, label, count }) => {
                 const active = regFilter === key;
                 return (
@@ -518,16 +528,18 @@ const Dashboard = () => {
                   <h3 className="font-bold text-gray-800 mb-2">Pharmacy Alerts</h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     {/* Low Stock Alerts */}
-                    {pharmacyAlerts.lowStockCount > 0 && (
+                    {lowStockCount > 0 && (
                       <div>
                         <p className="text-xs font-semibold text-red-600 mb-1.5 flex items-center gap-1">
-                          <PackageX size={14} /> {pharmacyAlerts.lowStockCount} Low Stock Items
+                          <PackageX size={14} /> {lowStockCount} Low Stock Items
                         </p>
                         <div className="space-y-1">
-                          {pharmacyAlerts.lowStockItems.slice(0, 3).map((item) => (
-                            <div key={item._id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-red-100">
+                          {lowStockList.slice(0, 3).map((item) => (
+                            <div key={item._id || item.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-red-100">
                               <span className="font-medium text-gray-700">{item.name}</span>
-                              <span className="text-red-500 font-semibold">{item.stock} left (min: {item.minStock})</span>
+                              <span className="text-red-500 font-semibold">
+                                {item.quantityInStock ?? item.stock ?? 0} left (min: {item.minStockLevel ?? item.minStock ?? 0})
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -535,17 +547,17 @@ const Dashboard = () => {
                     )}
 
                     {/* Expiry Alerts */}
-                    {pharmacyAlerts.nearExpiryCount > 0 && (
+                    {nearExpiryCount > 0 && (
                       <div>
                         <p className="text-xs font-semibold text-amber-600 mb-1.5 flex items-center gap-1">
-                          <Clock size={14} /> {pharmacyAlerts.nearExpiryCount} Near Expiry Items
+                          <Clock size={14} /> {nearExpiryCount} Near Expiry Items
                         </p>
                         <div className="space-y-1">
-                          {pharmacyAlerts.nearExpiryItems.slice(0, 3).map((item) => (
-                            <div key={item._id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-amber-100">
+                          {nearExpiryList.slice(0, 3).map((item) => (
+                            <div key={item._id || item.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-amber-100">
                               <span className="font-medium text-gray-700">{item.name}</span>
                               <span className="text-amber-600 font-semibold">
-                                Exp: {new Date(item.expiryDate).toLocaleDateString()}
+                                Exp: {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : "N/A"}
                               </span>
                             </div>
                           ))}
