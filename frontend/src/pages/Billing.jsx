@@ -101,15 +101,17 @@ const Billing = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Billing & Invoicing</h1>
-          <p className="text-gray-500">Generate itemized consultation, lab, pharmacy, and room charge receipts.</p>
+      {/* Main Billing Content (Hidden during Print) */}
+      <div className="space-y-6 no-print">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Billing & Invoicing</h1>
+            <p className="text-gray-500">Generate itemized consultation, lab, pharmacy, and room charge receipts.</p>
+          </div>
+          <button onClick={openAddModal} className="btn-primary flex items-center gap-2 w-fit">
+            <Plus size={18} /> New Invoice
+          </button>
         </div>
-        <button onClick={openAddModal} className="btn-primary flex items-center gap-2 w-fit">
-          <Plus size={18} /> New Invoice
-        </button>
-      </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -179,6 +181,7 @@ const Billing = () => {
           )}
         </div>
       )}
+      </div>
 
       {/* Modal: Create Invoice */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Generate New Invoice" size="lg">
@@ -282,7 +285,7 @@ const Billing = () => {
       {/* Modal: Printable Receipt */}
       <Modal isOpen={receiptModalOpen} onClose={() => setReceiptModalOpen(false)} title="Official Payment Receipt">
         {selectedBill && (
-          <div className="space-y-6 p-4 bg-white border border-gray-200 rounded-xl">
+          <div className="printable-receipt space-y-6 p-4 bg-white border border-gray-200 rounded-xl">
             <div className="flex justify-between border-b pb-4">
               <div>
                 <h2 className="text-xl font-bold text-primary-700">MEDICARE HOSPITAL SYSTEM</h2>
@@ -336,7 +339,7 @@ const Billing = () => {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-2">
+            <div className="flex justify-between items-center pt-2 no-print">
               <button onClick={() => window.print()} className="btn-primary text-xs flex items-center gap-1.5">
                 <Printer size={14} /> Print Receipt / Invoice
               </button>

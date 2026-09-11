@@ -50,20 +50,13 @@ body {
   }
 }
 
-/* Print Receipt Styles */
+/* Print Document Styles */
 @media print {
-  /* Hide everything except the receipt */
-  body {
-    background: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* Hide sidebar, navbar, modal backdrop, buttons */
+  /* Hide all app chrome, sidebars, headers, action buttons, and explicitly marked non-print content */
   aside,
   header,
   nav,
-  .fixed.inset-0.z-50 > div > div:first-child,
+  .no-print,
   button,
   .btn-primary,
   .btn-secondary,
@@ -71,32 +64,62 @@ body {
     display: none !important;
   }
 
-  /* Show only the receipt content */
-  .fixed.inset-0.z-50 {
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Reset layout structure for print */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Expand modal to full page print */
+  .print-modal-container {
     position: static !important;
     background: none !important;
     backdrop-filter: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: block !important;
   }
 
-  .fixed.inset-0.z-50 > div {
+  .print-modal-card {
     max-width: 100% !important;
+    width: 100% !important;
     max-height: none !important;
     overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Re-show print button text content inside receipt */
-  .space-y-6.p-4 {
+  .print-modal-body {
+    padding: 0 !important;
+  }
+
+  /* When printing a specific formal report or receipt, ensure clean document formatting */
+  .printable-report,
+  .printable-receipt {
     border: none !important;
-    padding: 20px !important;
+    box-shadow: none !important;
+    padding: 10px 0 !important;
+    width: 100% !important;
   }
 
-  /* Clean table rendering */
+  /* Clean table rendering in print */
   table {
     border-collapse: collapse;
+    width: 100%;
   }
+
   th, td {
     border: 1px solid #e5e7eb;
     padding: 8px;

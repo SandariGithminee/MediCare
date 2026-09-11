@@ -138,138 +138,141 @@ const Laboratory = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Laboratory Management</h1>
-                    <p className="text-gray-500">Process test requests, sample tracking, result entry, and lab reports.</p>
+            {/* Main Laboratory Content (Hidden during Print) */}
+            <div className="space-y-6 no-print">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Laboratory Management</h1>
+                        <p className="text-gray-500">Process test requests, sample tracking, result entry, and lab reports.</p>
+                    </div>
+                    <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2 w-fit">
+                        <Plus size={18} /> Request Lab Test
+                    </button>
                 </div>
-                <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2 w-fit">
-                    <Plus size={18} /> Request Lab Test
-                </button>
-            </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="relative max-w-md flex-1">
-                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                        className="input-field pl-10"
-                        placeholder="Search lab tests or patient name..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="relative max-w-md flex-1">
+                        <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                        <input
+                            className="input-field pl-10"
+                            placeholder="Search lab tests or patient name..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+                        {["All", "Requested", "Sample Collected", "In Progress", "Completed"].map((st) => (
+                            <button
+                                key={st}
+                                onClick={() => setFilterStatus(st)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filterStatus === st ? "bg-white text-primary-700 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                    }`}
+                            >
+                                {st}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
-                    {["All", "Requested", "Sample Collected", "In Progress", "Completed"].map((st) => (
-                        <button
-                            key={st}
-                            onClick={() => setFilterStatus(st)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filterStatus === st ? "bg-white text-primary-700 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                                }`}
-                        >
-                            {st}
-                        </button>
-                    ))}
-                </div>
-            </div>
 
-            {loading ? (
-                <div className="flex justify-center py-16">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full"></div>
-                </div>
-            ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredTests.map((t) => (
-                        <div key={t._id} className="card hover:shadow-md transition-shadow flex flex-col justify-between">
-                            <div>
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-10 h-10 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center">
-                                            <FlaskConical size={20} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 leading-tight">{t.testName}</h3>
-                                            <span className="text-xs text-gray-400">{t.testCategory} Panel</span>
-                                        </div>
-                                    </div>
-                                    <Badge status={t.status} />
-                                </div>
-
-                                <div className="space-y-2 text-xs text-gray-600 my-4 bg-gray-50 p-3 rounded-xl">
-                                    <p>
-                                        <span className="font-semibold text-gray-700">Patient:</span>{" "}
-                                        {t.patient ? `${t.patient.firstName} ${t.patient.lastName}` : "N/A"}
-                                    </p>
-                                    <p>
-                                        <span className="font-semibold text-gray-700">Doctor:</span> {t.doctor?.name || "N/A"}
-                                    </p>
-                                    <p>
-                                        <span className="font-semibold text-gray-700">Requested:</span>{" "}
-                                        {new Date(t.requestedDate).toLocaleDateString()}
-                                    </p>
-                                    {t.resultValue && (
-                                        <div className="pt-1 border-t border-gray-200">
-                                            <span className="font-semibold text-gray-700">Result:</span>{" "}
-                                            <span className="text-primary-700 font-bold">{t.resultValue}</span>
-                                        </div>
-                                    )}
-
-                                    {t.documents && t.documents.length > 0 && (
-                                        <div className="pt-2 border-t border-gray-200">
-                                            <span className="font-semibold text-gray-700 flex items-center gap-1 mb-1">
-                                                <Paperclip size={12} className="text-primary-600" /> Files ({t.documents.length}):
-                                            </span>
-                                            <div className="flex flex-wrap gap-1">
-                                                {t.documents.map((doc, idx) => (
-                                                    <a
-                                                        key={idx}
-                                                        href={doc.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded text-[11px] text-primary-700 hover:bg-primary-50 truncate max-w-[140px]"
-                                                        title={doc.name || doc.originalName}
-                                                    >
-                                                        <FileText size={11} />
-                                                        <span className="truncate">{doc.name || doc.originalName || "Document"}</span>
-                                                        <ExternalLink size={10} />
-                                                    </a>
-                                                ))}
+                {loading ? (
+                    <div className="flex justify-center py-16">
+                        <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+                    </div>
+                ) : (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {filteredTests.map((t) => (
+                            <div key={t._id} className="card hover:shadow-md transition-shadow flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-10 h-10 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center">
+                                                <FlaskConical size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-800 leading-tight">{t.testName}</h3>
+                                                <span className="text-xs text-gray-400">{t.testCategory} Panel</span>
                                             </div>
                                         </div>
+                                        <Badge status={t.status} />
+                                    </div>
+
+                                    <div className="space-y-2 text-xs text-gray-600 my-4 bg-gray-50 p-3 rounded-xl">
+                                        <p>
+                                            <span className="font-semibold text-gray-700">Patient:</span>{" "}
+                                            {t.patient ? `${t.patient.firstName} ${t.patient.lastName}` : "N/A"}
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold text-gray-700">Doctor:</span> {t.doctor?.name || "N/A"}
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold text-gray-700">Requested:</span>{" "}
+                                            {new Date(t.requestedDate).toLocaleDateString()}
+                                        </p>
+                                        {t.resultValue && (
+                                            <div className="pt-1 border-t border-gray-200">
+                                                <span className="font-semibold text-gray-700">Result:</span>{" "}
+                                                <span className="text-primary-700 font-bold">{t.resultValue}</span>
+                                            </div>
+                                        )}
+
+                                        {t.documents && t.documents.length > 0 && (
+                                            <div className="pt-2 border-t border-gray-200">
+                                                <span className="font-semibold text-gray-700 flex items-center gap-1 mb-1">
+                                                    <Paperclip size={12} className="text-primary-600" /> Files ({t.documents.length}):
+                                                </span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {t.documents.map((doc, idx) => (
+                                                        <a
+                                                            key={idx}
+                                                            href={doc.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded text-[11px] text-primary-700 hover:bg-primary-50 truncate max-w-[140px]"
+                                                            title={doc.name || doc.originalName}
+                                                        >
+                                                            <FileText size={11} />
+                                                            <span className="truncate">{doc.name || doc.originalName || "Document"}</span>
+                                                            <ExternalLink size={10} />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                                    {t.status === "Requested" && (
+                                        <button
+                                            onClick={() => handleUpdateStatus(t._id, "Sample Collected")}
+                                            className="flex-1 btn-primary text-xs py-2 flex items-center justify-center gap-1"
+                                        >
+                                            <TestTube size={14} /> Collect Sample
+                                        </button>
+                                    )}
+                                    {t.status === "Sample Collected" && (
+                                        <button
+                                            onClick={() => openResultModal(t)}
+                                            className="flex-1 bg-accent-600 hover:bg-accent-700 text-white font-medium rounded-xl text-xs py-2 flex items-center justify-center gap-1"
+                                        >
+                                            <FileText size={14} /> Enter Result
+                                        </button>
+                                    )}
+                                    {t.status === "Completed" && (
+                                        <button
+                                            onClick={() => openPrintReport(t)}
+                                            className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl text-xs py-2 flex items-center justify-center gap-1"
+                                        >
+                                            <Printer size={14} /> View / Print Report
+                                        </button>
                                     )}
                                 </div>
                             </div>
-
-                            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                                {t.status === "Requested" && (
-                                    <button
-                                        onClick={() => handleUpdateStatus(t._id, "Sample Collected")}
-                                        className="flex-1 btn-primary text-xs py-2 flex items-center justify-center gap-1"
-                                    >
-                                        <TestTube size={14} /> Collect Sample
-                                    </button>
-                                )}
-                                {t.status === "Sample Collected" && (
-                                    <button
-                                        onClick={() => openResultModal(t)}
-                                        className="flex-1 bg-accent-600 hover:bg-accent-700 text-white font-medium rounded-xl text-xs py-2 flex items-center justify-center gap-1"
-                                    >
-                                        <FileText size={14} /> Enter Result
-                                    </button>
-                                )}
-                                {t.status === "Completed" && (
-                                    <button
-                                        onClick={() => openPrintReport(t)}
-                                        className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl text-xs py-2 flex items-center justify-center gap-1"
-                                    >
-                                        <Printer size={14} /> View / Print Report
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    {!filteredTests.length && <p className="text-gray-400 text-center col-span-full py-16">No lab tests found.</p>}
-                </div>
-            )}
+                        ))}
+                        {!filteredTests.length && <p className="text-gray-400 text-center col-span-full py-16">No lab tests found.</p>}
+                    </div>
+                )}
+            </div>
 
             {/* Modal: Request Lab Test */}
             <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Request Laboratory Test">
@@ -425,7 +428,7 @@ const Laboratory = () => {
             {/* Modal: Printable Report */}
             <Modal isOpen={printModalOpen} onClose={() => setPrintModalOpen(false)} title="Official Laboratory Report">
                 {printModalOpen && selectedTest && (
-                    <div className="space-y-6 p-4 bg-white border border-gray-200 rounded-xl">
+                    <div className="printable-report space-y-6 p-4 bg-white border border-gray-200 rounded-xl">
                         <div className="flex justify-between border-b pb-4">
                             <div>
                                 <h2 className="text-xl font-bold text-primary-700">MEDICARE DIAGNOSTICS</h2>
@@ -498,7 +501,7 @@ const Laboratory = () => {
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <div className="flex justify-between items-center pt-4 border-t border-gray-100 no-print">
                             <button onClick={() => window.print()} className="btn-primary text-xs flex items-center gap-1.5">
                                 <Printer size={14} /> Print Formal Report
                             </button>
