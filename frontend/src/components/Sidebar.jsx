@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 
+import { useAuth } from "../context/AuthContext";
+
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/patients", label: "Patients", icon: Users },
@@ -33,6 +35,14 @@ const links = [
 ];
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
+  const { user } = useAuth();
+  const isAdmin = (user?.role || "").toLowerCase() === "admin";
+
+  const navLinks = [
+    links[0],
+    ...(isAdmin ? [{ to: "/dashboard?tab=approvals", label: "User Approvals", icon: ShieldCheck }] : []),
+    ...links.slice(1),
+  ];
   return (
     <>
       {sidebarOpen && (
@@ -62,7 +72,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           </div>
 
           <nav className="px-3 mt-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
-            {links.map(({ to, label, icon: Icon }) => (
+            {navLinks.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}

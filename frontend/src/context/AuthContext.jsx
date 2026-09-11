@@ -162,74 +162,100 @@ export const AuthProvider = ({ children }) => {
   }, [user, resetIdleTimer]);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      if (error.message?.toLowerCase().includes("email not confirmed")) {
-        const customErr = new Error("Your account is not activated. Please check your email inbox to confirm your account.");
-        customErr.isUnconfirmed = true;
-        customErr.email = email;
-        throw customErr;
+    let authResult;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (error.message?.toLowerCase().includes("email not confirmed")) {
+          const customErr = new Error("Your account is not activated. Please check your email inbox to confirm your account.");
+          customErr.isUnconfirmed = true;
+          customErr.email = email;
+          throw customErr;
+        }
+        throw error;
       }
-      throw error;
+      authResult = data;
+    } catch (sbError) {
+      if (sbError.isUnconfirmed) throw sbError;
+      // If Supabase sign in failed or rejected, check with backend login endpoint
+      try {
+        const { data: bRes } = await api.post("/auth/login", { email, password });
+        if (bRes) {
+          const userObj = {
+            _id: bRes.id,
+            id: bRes.id,
+            auth_id: bRes.auth_id,
+            name: bRes.name,
+            email: bRes.email,
+            role: bRes.role,
+            status: bRes.status,
+            token: bRes.token,
+          };
+          setUser(userObj);
+          localStorage.setItem("medicareUser", JSON.stringify(userObj));
+          toast.success(`Welcome back, ${bRes.name}!`);
+          return bRes;
+        }
+      } catch (bErr) {
+        const msg = bErr.response?.data?.message || sbError.message;
+        const err = new Error(msg);
+        err.isPendingApproval = bErr.response?.data?.isPendingApproval;
+        throw err;
+      }
+      throw sbError;
     }
-    if (data.session) {
-      await syncSession(data.session);
-      toast.success(`Welcome back, ${data.user.user_metadata?.name || data.user.email}!`);
+
+    // Supabase auth succeeded - verify approval status in database profile before allowing session
+    if (authResult?.session) {
+      try {
+        const { data: profile } = await api.get("/auth/profile", {
+          headers: { Authorization: `Bearer ${authResult.session.access_token}` },
+        });
+
+        if (profile) {
+          const role = (profile.role || "").toLowerCase();
+          const isApproved = profile.is_approved !== false && profile.status !== "Pending" && profile.status !== "Rejected";
+
+          if (role !== "admin" && !isApproved) {
+            await supabase.auth.signOut();
+            localStorage.removeItem("medicareUser");
+            setUser(null);
+            const approvalErr = new Error(
+              profile.status === "Rejected"
+                ? "Your registration request was rejected by the administrator. Please contact hospital administration."
+                : "Your account is pending administrator approval. Please wait for an administrator to approve your registration before logging in."
+            );
+            approvalErr.isPendingApproval = true;
+            throw approvalErr;
+          }
+        }
+      } catch (profErr) {
+        if (profErr.isPendingApproval || profErr.message?.includes("approval")) {
+          await supabase.auth.signOut();
+          localStorage.removeItem("medicareUser");
+          setUser(null);
+          throw profErr;
+        }
+      }
+
+      await syncSession(authResult.session);
+      toast.success(`Welcome back, ${authResult.user.user_metadata?.name || authResult.user.email}!`);
     }
-    return data;
+    return authResult;
   };
 
   const register = async (payload) => {
-    const { email, password, name, role, phone } = payload;
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            role: role || "receptionist",
-            phone: phone || "",
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (!error && data?.user) {
-        if (data.session) {
-          await syncSession(data.session);
-          toast.success("Account created and signed in!");
-          return { ...data, requiresEmailConfirmation: false };
-        }
-        return { ...data, requiresEmailConfirmation: true };
-      }
-
-      if (error) {
-        console.warn("Client Supabase signUp notice:", error.message);
-      }
-    } catch (err) {
-      console.warn("Client Supabase signUp exception, using backend registration:", err.message);
-    }
-
-    // Backend registration fallback: automatically creates in both auth.users and public.users
+    // Register through backend to ensure proper approval status and PostgreSQL record creation
     const { data: res } = await api.post("/auth/register", payload);
-    if (res.token) {
-      const userObj = {
-        _id: res.id,
-        id: res.id,
-        auth_id: res.auth_id,
-        email: res.email,
-        name: res.name,
-        role: res.role,
-        token: res.token,
-      };
-      setUser(userObj);
-      localStorage.setItem("medicareUser", JSON.stringify(userObj));
-      toast.success("Account created successfully!");
-      return { requiresEmailConfirmation: false };
-    }
-    return res;
+
+    // Sign out of any passive Supabase session to prevent auto-login before admin approval
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    localStorage.removeItem("medicareUser");
+    setUser(null);
+
+    return { requiresApproval: true, ...res };
   };
 
   const forgotPassword = async (email) => {

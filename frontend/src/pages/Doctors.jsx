@@ -12,7 +12,6 @@ import {
   Check,
   LayoutGrid,
   CalendarDays,
-  CheckCircle2,
   Building2,
   Stethoscope,
 } from "lucide-react";
@@ -37,12 +36,43 @@ const STANDARD_DEPARTMENTS = [
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const QUICK_TIME_SLOTS = [
-  "08:00 AM - 12:00 PM",
-  "09:00 AM - 05:00 PM",
-  "01:00 PM - 05:00 PM",
-  "05:00 PM - 09:00 PM",
-];
+// Convert 24-hour "09:00" to 12-hour "09:00 AM"
+const format24to12 = (time24) => {
+  if (!time24) return "";
+  const [hStr, mStr] = time24.split(":");
+  let h = parseInt(hStr, 10);
+  const m = mStr || "00";
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${String(h).padStart(2, "0")}:${m} ${ampm}`;
+};
+
+// Convert 12-hour "09:00 AM" to 24-hour "09:00"
+const format12to24 = (time12) => {
+  if (!time12) return "";
+  const match = time12.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!match) return "";
+  let [_, hStr, mStr, ampm] = match;
+  let h = parseInt(hStr, 10);
+  if (ampm) {
+    ampm = ampm.toUpperCase();
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+  }
+  return `${String(h).padStart(2, "0")}:${mStr}`;
+};
+
+// Parse range "09:00 AM - 05:00 PM" -> { startTime: "09:00", endTime: "17:00" }
+const parseAvailableTimeTo24 = (rangeStr) => {
+  if (!rangeStr || !rangeStr.includes("-")) {
+    return { startTime: "09:00", endTime: "17:00" };
+  }
+  const [s, e] = rangeStr.split("-");
+  const startTime = format12to24(s) || "09:00";
+  const endTime = format12to24(e) || "17:00";
+  return { startTime, endTime };
+};
 
 const emptyForm = {
   name: "",
@@ -54,6 +84,8 @@ const emptyForm = {
   experience: 0,
   fee: 0,
   availableDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+  startTime: "09:00",
+  endTime: "17:00",
   availableTime: "09:00 AM - 05:00 PM",
   status: "Active",
 };
@@ -182,6 +214,7 @@ const Doctors = () => {
 
   const openEditModal = (doc) => {
     const isStandardDept = STANDARD_DEPARTMENTS.includes(doc.department);
+    const { startTime, endTime } = parseAvailableTimeTo24(doc.availableTime || "09:00 AM - 05:00 PM");
     setForm({
       ...emptyForm,
       ...doc,
@@ -198,7 +231,9 @@ const Doctors = () => {
         Array.isArray(doc.availableDays) && doc.availableDays.length > 0
           ? doc.availableDays
           : ["Mon", "Tue", "Wed", "Thu", "Fri"],
-      availableTime: doc.availableTime || "09:00 AM - 05:00 PM",
+      startTime,
+      endTime,
+      availableTime: doc.availableTime || `${format24to12(startTime)} - ${format24to12(endTime)}`,
       status: doc.status || "Active",
     });
     setErrors({});
@@ -216,6 +251,20 @@ const Doctors = () => {
       const liveErrors = validateDoctor(nextForm);
       setErrors((prev) => ({ ...prev, [name]: liveErrors[name] || "" }));
     }
+  };
+
+  const handleTimeChange = (field, value) => {
+    const nextStartTime = field === "startTime" ? value : form.startTime || "09:00";
+    const nextEndTime = field === "endTime" ? value : form.endTime || "17:00";
+    const s12 = format24to12(nextStartTime);
+    const e12 = format24to12(nextEndTime);
+    const formatted = `${s12} - ${e12}`;
+
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+      availableTime: formatted,
+    }));
   };
 
   const handleBlur = (e) => {
@@ -273,11 +322,15 @@ const Doctors = () => {
         ? form.customDepartment.trim()
         : form.department || "General Medicine";
 
+    const s12 = format24to12(form.startTime || "09:00");
+    const e12 = format24to12(form.endTime || "17:00");
+    const finalAvailableTime = `${s12} - ${e12}`;
+
     const payload = {
       ...form,
       department: finalDepartment,
       availableDays: form.availableDays && form.availableDays.length > 0 ? form.availableDays : ["Mon", "Wed", "Fri"],
-      availableTime: form.availableTime?.trim() || "09:00 AM - 05:00 PM",
+      availableTime: finalAvailableTime,
     };
 
     try {
@@ -313,7 +366,7 @@ const Doctors = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Doctor Management</h1>
-          <p className="text-gray-500">Manage doctors, departmental assignments, and weekly consulting schedules.</p>
+          <p className="text-gray-500">Manage doctors, departmental assignments, and flexible consulting schedules.</p>
         </div>
         <div className="flex items-center gap-3">
           {/* View Switcher: Cards vs Schedule */}
@@ -448,8 +501,8 @@ const Doctors = () => {
                     <span className="font-semibold text-gray-700 flex items-center gap-1">
                       <Calendar size={13} className="text-primary-600" /> Consulting Days
                     </span>
-                    <span className="text-gray-500 flex items-center gap-1 text-[11px]">
-                      <Clock size={11} className="text-accent-600" /> {d.availableTime || "9:00 AM - 5:00 PM"}
+                    <span className="text-gray-600 font-medium flex items-center gap-1 text-[11px]">
+                      <Clock size={11} className="text-accent-600" /> {d.availableTime || "09:00 AM - 05:00 PM"}
                     </span>
                   </div>
                   <div className="flex gap-1 justify-between">
@@ -851,35 +904,40 @@ const Doctors = () => {
               </p>
             )}
 
-            {/* Consulting Hours / Time Slots */}
+            {/* Flexible Time Selection - Select Any Custom Working Hours */}
             <div>
               <label className="label-field flex items-center gap-1.5 font-semibold text-gray-800 mt-2">
                 <Clock size={15} className="text-primary-600" />
-                Consultation Hours / Time Slot
+                Consultation Working Hours (Select Any Custom Time)
               </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {QUICK_TIME_SLOTS.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, availableTime: slot }))}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition ${
-                      form.availableTime === slot
-                        ? "bg-accent-100 text-accent-700 font-semibold border border-accent-300 shadow-xs"
-                        : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-xs">
+                <div>
+                  <span className="text-xs text-gray-500 font-medium block mb-1">From (Start Time)</span>
+                  <input
+                    type="time"
+                    name="startTime"
+                    value={form.startTime || "09:00"}
+                    onChange={(e) => handleTimeChange("startTime", e.target.value)}
+                    className="input-field py-1.5 px-2 text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 font-medium block mb-1">To (End Time)</span>
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={form.endTime || "17:00"}
+                    onChange={(e) => handleTimeChange("endTime", e.target.value)}
+                    className="input-field py-1.5 px-2 text-sm font-medium"
+                  />
+                </div>
               </div>
-              <input
-                name="availableTime"
-                value={form.availableTime || ""}
-                onChange={handleChange}
-                placeholder="e.g. 09:00 AM - 05:00 PM"
-                className="input-field"
-              />
+              <div className="mt-2 flex items-center justify-between text-xs px-1">
+                <span className="text-gray-400">Scheduled Consulting Window:</span>
+                <span className="font-semibold text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full border border-primary-100">
+                  {form.availableTime || "09:00 AM - 05:00 PM"}
+                </span>
+              </div>
             </div>
           </div>
 

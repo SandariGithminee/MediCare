@@ -17,6 +17,10 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please provide name, email, and password" });
     }
 
+    if (role && role.trim().toLowerCase() === "admin") {
+      return res.status(400).json({ message: "Admin accounts cannot be self-registered. Please contact an administrator." });
+    }
+
     const existing = await db.query("SELECT id FROM users WHERE email = $1", [email]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ message: "User already exists with this email" });
@@ -87,25 +91,15 @@ const registerUser = async (req, res) => {
     const localHashedPassword = await bcrypt.hash(password, salt);
 
     const result = await db.query(
-      `INSERT INTO users (auth_id, name, email, password, role)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (auth_id, name, email, password, role, status, is_approved)
+       VALUES ($1, $2, $3, $4, $5, 'Pending', FALSE)
        ON CONFLICT (email) DO UPDATE
-       SET auth_id = EXCLUDED.auth_id, name = EXCLUDED.name, role = EXCLUDED.role
-       RETURNING id, auth_id, name, email, role`,
+       SET auth_id = EXCLUDED.auth_id, name = EXCLUDED.name, role = EXCLUDED.role, status = 'Pending', is_approved = FALSE
+       RETURNING id, auth_id, name, email, role, status, is_approved`,
       [authId, name, email, localHashedPassword, role || "receptionist"]
     );
 
     const user = result.rows[0];
-
-    // 4. Retrieve valid Supabase session token
-    if (!accessToken) {
-      try {
-        const { data: signData } = await supabase.auth.signInWithPassword({ email, password });
-        if (signData?.session) {
-          accessToken = signData.session.access_token;
-        }
-      } catch {}
-    }
 
     res.status(201).json({
       _id: user.id,
@@ -114,8 +108,10 @@ const registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token: accessToken || generateToken(user.id),
-      message: "Account created successfully!",
+      status: user.status,
+      isApproved: user.is_approved,
+      requiresApproval: true,
+      message: "Registration submitted successfully! Your account is pending administrator approval before you can log in.",
     });
   } catch (error) {
     console.error("registerUser Error:", error);
@@ -134,6 +130,23 @@ const loginUser = async (req, res) => {
 
     const user = result.rows[0];
 
+    // Check approval status for non-admin accounts
+    const userRole = (user.role || "").toLowerCase();
+    if (userRole !== "admin") {
+      if (user.status === "Pending" || user.is_approved === false) {
+        return res.status(403).json({
+          message: "Your registration is pending administrator approval. You will be able to log in once an administrator approves your account.",
+          isPendingApproval: true,
+        });
+      }
+      if (user.status === "Rejected") {
+        return res.status(403).json({
+          message: "Your registration was not approved by the administrator. Please contact hospital administration.",
+          isRejected: true,
+        });
+      }
+    }
+
     // If password is not stored in public.users, attempt Supabase Auth login
     if (!user.password && user.auth_id) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -147,6 +160,7 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        status: user.status || "Approved",
         token: data.session.access_token,
       });
     }
@@ -161,6 +175,7 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        status: user.status || "Approved",
         token: generateToken(user.id),
       });
     } else {
@@ -229,4 +244,103 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getProfile, changePassword };
+// Admin registration approval controllers
+const getRegistrations = async (req, res) => {
+  try {
+    const { status } = req.query;
+    let queryText = "SELECT id, auth_id, name, email, role, status, is_approved, created_at FROM users";
+    let params = [];
+
+    if (status && status !== "All") {
+      queryText += " WHERE status ILIKE $1";
+      params.push(status);
+    }
+
+    queryText += " ORDER BY created_at DESC";
+
+    const { rows } = await db.query(queryText, params);
+    res.json(
+      rows.map((u) => ({
+        _id: u.id,
+        id: u.id,
+        auth_id: u.auth_id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: u.status || (u.is_approved ? "Approved" : "Pending"),
+        isApproved: u.is_approved,
+        createdAt: u.created_at,
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to fetch registrations" });
+  }
+};
+
+const approveRegistration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      "UPDATE users SET status = 'Approved', is_approved = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, name, email, role, status, is_approved",
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: `Registration for ${rows[0].name} (${rows[0].email}) approved successfully!`,
+      user: rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to approve registration" });
+  }
+};
+
+const rejectRegistration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      "UPDATE users SET status = 'Rejected', is_approved = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, name, email, role, status, is_approved",
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: `Registration for ${rows[0].name} (${rows[0].email}) has been rejected.`,
+      user: rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to reject registration" });
+  }
+};
+
+const deleteRegistration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query("DELETE FROM users WHERE id = $1 RETURNING id, name, email", [id]);
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User registration removed." });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to delete registration" });
+  }
+};
+
+module.exports = {
+  registerUser,
+  loginUser,
+  getProfile,
+  changePassword,
+  getRegistrations,
+  approveRegistration,
+  rejectRegistration,
+  deleteRegistration,
+};

@@ -13,7 +13,7 @@ const Register = () => {
     role: "receptionist",
   });
   const [loading, setLoading] = useState(false);
-  const [activationRequired, setActivationRequired] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -23,12 +23,9 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await register(form);
-      if (res?.requiresEmailConfirmation) {
-        setActivationRequired(true);
-      } else {
-        navigate("/dashboard");
-      }
+      await register(form);
+      setSubmitted(true);
+      toast.success("Registration submitted! Pending administrator approval.");
     } catch (error) {
       toast.error(error.message || error.response?.data?.message || "Registration failed. Please try again.");
     } finally {
@@ -47,10 +44,10 @@ const Register = () => {
             <span className="font-bold text-xl text-gray-800">Medicare</span>
           </Link>
 
-          {!activationRequired ? (
+          {!submitted ? (
             <>
-              <h1 className="text-2xl font-bold text-gray-800 mb-1">Create your account</h1>
-              <p className="text-gray-500 mb-8">Join Medicare and manage your hospital smarter.</p>
+              <h1 className="text-2xl font-bold text-gray-800 mb-1">Create staff account</h1>
+              <p className="text-gray-500 mb-8">Register your details for hospital system access.</p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -63,7 +60,7 @@ const Register = () => {
                       value={form.name}
                       onChange={handleChange}
                       className="input-field pl-10"
-                      placeholder="Jane Doe"
+                      placeholder="Dr. Jane Doe"
                     />
                   </div>
                 </div>
@@ -91,7 +88,7 @@ const Register = () => {
                       value={form.phone}
                       onChange={handleChange}
                       className="input-field pl-10"
-                      placeholder="+94 77 123 4567"
+                      placeholder="10-digit number (e.g. 0712345678)"
                     />
                   </div>
                 </div>
@@ -112,9 +109,8 @@ const Register = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="label-field">Role</label>
+                  <label className="label-field">Hospital Role</label>
                   <select name="role" value={form.role} onChange={handleChange} className="input-field">
-                    <option value="admin">Admin</option>
                     <option value="doctor">Doctor</option>
                     <option value="nurse">Nurse</option>
                     <option value="receptionist">Receptionist</option>
@@ -122,10 +118,17 @@ const Register = () => {
                     <option value="pharmacist">Pharmacist</option>
                     <option value="accountant">Accountant</option>
                   </select>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Note: Admin accounts are provisioned exclusively by hospital administrators.
+                  </p>
                 </div>
 
-                <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
-                  {loading ? "Creating account..." : "Create Account"}
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                  ⚠️ <strong>Administrator Approval Required:</strong> Newly registered accounts must be reviewed and approved by an administrator before signing in.
+                </div>
+
+                <button type="submit" disabled={loading} className="btn-primary w-full mt-2 shadow-md">
+                  {loading ? "Submitting Registration..." : "Submit Registration"}
                 </button>
               </form>
 
@@ -137,19 +140,25 @@ const Register = () => {
               </p>
             </>
           ) : (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 text-center animate-fade-in">
-              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 size={32} />
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-200 text-center animate-fade-in">
+              <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                <CheckCircle2 size={36} />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Account Created!</h2>
-              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                An activation link has been sent to <span className="font-semibold text-gray-800">{form.email}</span>. Please check your inbox and click the verification link to activate your Medicare account.
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Registration Submitted!</h2>
+              <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                Thank you, <span className="font-semibold text-gray-800">{form.name}</span>. Your registration request for the{" "}
+                <strong className="text-primary-700 capitalize">{form.role}</strong> role has been recorded.
               </p>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 mb-6 text-left space-y-1">
+                <p>• <strong>Status:</strong> Pending Administrator Review</p>
+                <p>• <strong>Email:</strong> {form.email}</p>
+                <p>• Once an administrator approves your account, you will be able to sign in.</p>
+              </div>
               <Link
                 to="/login"
-                className="btn-primary w-full inline-flex items-center justify-center gap-2"
+                className="btn-primary w-full inline-flex items-center justify-center gap-2 shadow-md"
               >
-                Proceed to Sign In <ArrowRight size={16} />
+                Go to Sign In <ArrowRight size={16} />
               </Link>
             </div>
           )}
