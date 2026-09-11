@@ -1,5 +1,6 @@
 const { supabase, bucketName } = require("../config/supabase");
 const path = require("path");
+const { formatErrorMessage } = require("../utils/errorHandler");
 
 /**
  * Helper to upload a single buffer to Supabase Storage bucket "Uploads"
@@ -45,7 +46,7 @@ const uploadBufferToSupabase = async (file, folder = "documents") => {
 const uploadSingleFile = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "Please upload a file" });
+      return res.status(400).json({ message: "Please select a file to upload." });
     }
 
     const folder = req.body.folder || "general";
@@ -58,7 +59,7 @@ const uploadSingleFile = async (req, res) => {
     });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ message: error.message || "Failed to upload file" });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 
@@ -84,7 +85,7 @@ const uploadMultipleFiles = async (req, res) => {
     });
   } catch (error) {
     console.error("Upload multiple error:", error);
-    res.status(500).json({ message: error.message || "Failed to upload files" });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 
@@ -97,7 +98,7 @@ const deleteFile = async (req, res) => {
   try {
     const { filePath } = req.body;
     if (!filePath) {
-      return res.status(400).json({ message: "filePath is required" });
+      return res.status(400).json({ message: "filePath is required." });
     }
 
     const { data, error } = await supabase.storage
@@ -105,7 +106,7 @@ const deleteFile = async (req, res) => {
       .remove([filePath]);
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: formatErrorMessage(error) });
     }
 
     res.status(200).json({
@@ -114,7 +115,7 @@ const deleteFile = async (req, res) => {
       data,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 

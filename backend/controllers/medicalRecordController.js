@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { formatErrorMessage } = require("../utils/errorHandler");
 
 const buildMedicalRecordQuery = (whereClause = "", params = []) => {
     return {
@@ -119,7 +120,7 @@ const createMedicalRecord = async (req, res) => {
         const { rows } = await db.query(q.text, q.params);
         res.status(201).json(mapMedicalRecord(rows[0]));
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ message: formatErrorMessage(error) });
     }
 };
 
@@ -167,7 +168,7 @@ const updateMedicalRecord = async (req, res) => {
         if (!rows.length) return res.status(404).json({ message: "Medical record not found" });
         res.json(mapMedicalRecord(rows[0]));
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ message: formatErrorMessage(error) });
     }
 };
 
@@ -177,7 +178,7 @@ const deleteMedicalRecord = async (req, res) => {
         if (!rows.length) return res.status(404).json({ message: "Medical record not found" });
         res.json({ message: "Medical record deleted" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: formatErrorMessage(error) });
     }
 };
 

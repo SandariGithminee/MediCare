@@ -44,9 +44,7 @@ const FileUpload = ({
         files.forEach((f) => formData.append("files", f));
         formData.append("folder", folder);
 
-        const res = await api.post("/upload/multiple", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        const res = await api.post("/upload/multiple", formData);
 
         const newDocs = res.data.files || [];
         onChange?.([...(value || []), ...newDocs]);
@@ -59,9 +57,7 @@ const FileUpload = ({
           formData.append("file", file);
           formData.append("folder", folder);
 
-          const res = await api.post("/upload/single", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+          const res = await api.post("/upload/single", formData);
           if (res.data?.file) {
             uploaded.push(res.data.file);
           }
@@ -71,7 +67,8 @@ const FileUpload = ({
       }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error(error.response?.data?.message || "Failed to upload document to Supabase", { id: toastId });
+      const friendly = error.friendlyMessage || error.response?.data?.message || "Failed to upload document to Supabase";
+      toast.error(friendly, { id: toastId });
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

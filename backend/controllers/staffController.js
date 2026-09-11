@@ -151,16 +151,6 @@ const deleteStaff = async (req, res) => {
     }
 };
 
-const deleteStaff = async (req, res) => {
-    try {
-        const { rows } = await db.query("DELETE FROM staff WHERE id = $1 RETURNING *", [req.params.id]);
-        if (!rows.length) return res.status(404).json({ message: "Staff member not found" });
-        res.json({ message: "Staff member deleted" });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
 const recordAttendance = async (req, res) => {
     try {
         const { id } = req.params;
