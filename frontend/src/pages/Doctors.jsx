@@ -113,7 +113,14 @@ const Doctors = () => {
   };
 
   const openEditModal = (doc) => {
-    setForm(doc);
+    setForm({
+      ...emptyForm,
+      ...doc,
+      fee: doc.fee !== undefined && doc.fee !== null ? doc.fee : (doc.consultationFee !== undefined && doc.consultationFee !== null ? doc.consultationFee : 0),
+      experience: doc.experience !== undefined && doc.experience !== null ? doc.experience : 0,
+      availableTime: doc.availableTime || "9:00 AM - 5:00 PM",
+      status: doc.status || "Active",
+    });
     setErrors({});
     setTouched({});
     setEditingId(doc._id || doc.id);
@@ -227,10 +234,10 @@ const Doctors = () => {
               </div>
               <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
                 <span className="flex items-center gap-1">
-                  <Star size={14} className="text-amber-400 fill-amber-400" /> {d.rating}
+                  <Star size={14} className="text-amber-400 fill-amber-400" /> {d.rating !== undefined && d.rating !== null ? d.rating : 4.8}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock size={14} /> {d.experience} yrs
+                  <Clock size={14} /> {d.experience !== undefined && d.experience !== null ? d.experience : 0} yrs
                 </span>
               </div>
               <p className="text-sm text-gray-500 flex items-center gap-2 mb-4">
@@ -238,7 +245,9 @@ const Doctors = () => {
               </p>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm text-gray-400">Consultation Fee</span>
-                <span className="font-bold text-gray-800">Rs. {d.fee}</span>
+                <span className="font-bold text-gray-800">
+                  Rs. {d.fee !== undefined && d.fee !== null ? d.fee : (d.consultationFee !== undefined && d.consultationFee !== null ? d.consultationFee : 0)}
+                </span>
               </div>
               <div className="flex gap-2">
                 <button
