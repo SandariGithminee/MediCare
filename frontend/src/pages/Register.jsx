@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HeartPulse, Mail, Lock, User, Phone } from "lucide-react";
+import { HeartPulse, Mail, Lock, User, Phone, CheckCircle2, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -13,6 +13,7 @@ const Register = () => {
     role: "receptionist",
   });
   const [loading, setLoading] = useState(false);
+  const [activationRequired, setActivationRequired] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -22,10 +23,14 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await register(form);
-      navigate("/dashboard");
+      const res = await register(form);
+      if (res?.requiresEmailConfirmation) {
+        setActivationRequired(true);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Registration failed. Check your backend server.");
+      toast.error(error.message || error.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -42,62 +47,112 @@ const Register = () => {
             <span className="font-bold text-xl text-gray-800">Medicare</span>
           </Link>
 
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Create your account</h1>
-          <p className="text-gray-500 mb-8">Join Medicare and manage your hospital smarter.</p>
+          {!activationRequired ? (
+            <>
+              <h1 className="text-2xl font-bold text-gray-800 mb-1">Create your account</h1>
+              <p className="text-gray-500 mb-8">Join Medicare and manage your hospital smarter.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label-field">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input name="name" required value={form.name} onChange={handleChange} className="input-field pl-10" placeholder="Jane Doe" />
-              </div>
-            </div>
-            <div>
-              <label className="label-field">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input type="email" name="email" required value={form.email} onChange={handleChange} className="input-field pl-10" placeholder="you@medicare.com" />
-              </div>
-            </div>
-            <div>
-              <label className="label-field">Phone</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input name="phone" value={form.phone} onChange={handleChange} className="input-field pl-10" placeholder="+94 77 123 4567" />
-              </div>
-            </div>
-            <div>
-              <label className="label-field">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input type="password" name="password" required minLength={6} value={form.password} onChange={handleChange} className="input-field pl-10" placeholder="At least 6 characters" />
-              </div>
-            </div>
-            <div>
-              <label className="label-field">Role</label>
-              <select name="role" value={form.role} onChange={handleChange} className="input-field">
-                <option value="admin">Admin</option>
-                <option value="doctor">Doctor</option>
-                <option value="nurse">Nurse</option>
-                <option value="receptionist">Receptionist</option>
-                <option value="lab">Lab Staff</option>
-                <option value="pharmacist">Pharmacist</option>
-                <option value="accountant">Accountant</option>
-              </select>
-            </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="label-field">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                      name="name"
+                      required
+                      value={form.name}
+                      onChange={handleChange}
+                      className="input-field pl-10"
+                      placeholder="Jane Doe"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label-field">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={form.email}
+                      onChange={handleChange}
+                      className="input-field pl-10"
+                      placeholder="you@medicare.com"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label-field">Phone</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      className="input-field pl-10"
+                      placeholder="+94 77 123 4567"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label-field">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      minLength={6}
+                      value={form.password}
+                      onChange={handleChange}
+                      className="input-field pl-10"
+                      placeholder="At least 6 characters"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label-field">Role</label>
+                  <select name="role" value={form.role} onChange={handleChange} className="input-field">
+                    <option value="admin">Admin</option>
+                    <option value="doctor">Doctor</option>
+                    <option value="nurse">Nurse</option>
+                    <option value="receptionist">Receptionist</option>
+                    <option value="lab">Lab Staff</option>
+                    <option value="pharmacist">Pharmacist</option>
+                    <option value="accountant">Accountant</option>
+                  </select>
+                </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
-          </form>
+                <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
+                  {loading ? "Creating account..." : "Create Account"}
+                </button>
+              </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Already have an account?{" "}
-            <Link to="/login" className="text-primary-600 font-semibold">
-              Sign in
-            </Link>
-          </p>
+              <p className="text-center text-sm text-gray-500 mt-6">
+                Already have an account?{" "}
+                <Link to="/login" className="text-primary-600 font-semibold hover:underline">
+                  Sign in
+                </Link>
+              </p>
+            </>
+          ) : (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 text-center animate-fade-in">
+              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Account Created!</h2>
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                An activation link has been sent to <span className="font-semibold text-gray-800">{form.email}</span>. Please check your inbox and click the verification link to activate your Medicare account.
+              </p>
+              <Link
+                to="/login"
+                className="btn-primary w-full inline-flex items-center justify-center gap-2"
+              >
+                Proceed to Sign In <ArrowRight size={16} />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 
 const Navbar = ({ setSidebarOpen }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, changePassword } = useAuth();
   const [pwModalOpen, setPwModalOpen] = useState(false);
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [pwLoading, setPwLoading] = useState(false);
@@ -21,15 +21,12 @@ const Navbar = ({ setSidebarOpen }) => {
     }
     setPwLoading(true);
     try {
-      await api.put("/auth/change-password", {
-        currentPassword: pwForm.currentPassword,
-        newPassword: pwForm.newPassword,
-      });
+      await changePassword(pwForm.currentPassword, pwForm.newPassword);
       toast.success("Password changed successfully!");
       setPwModalOpen(false);
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to change password");
+      toast.error(error.message || error.response?.data?.message || "Failed to change password");
     } finally {
       setPwLoading(false);
     }

@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { formatErrorMessage } = require("../utils/errorHandler");
 
 const mapDoctor = (d) => {
   if (!d) return null;
@@ -37,17 +38,17 @@ const getDoctors = async (req, res) => {
     const { rows } = await db.query(queryText, params);
     res.json(rows.map(mapDoctor));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 
 const getDoctorById = async (req, res) => {
   try {
     const { rows } = await db.query("SELECT * FROM doctors WHERE id = $1", [req.params.id]);
-    if (!rows.length) return res.status(404).json({ message: "Doctor not found" });
+    if (!rows.length) return res.status(404).json({ message: "Doctor not found." });
     res.json(mapDoctor(rows[0]));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 
@@ -65,18 +66,28 @@ const createDoctor = async (req, res) => {
       status,
     } = req.body;
 
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({ message: "Doctor name is required (at least 2 characters)." });
+    }
+    if (!specialization || specialization.trim() === "") {
+      return res.status(400).json({ message: "Specialization is required." });
+    }
+    if (!department || department.trim() === "") {
+      return res.status(400).json({ message: "Department is required." });
+    }
+
     const { rows } = await db.query(
       `INSERT INTO doctors 
        (name, email, phone, specialization, department, qualification, consultation_fee, available_days, status) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
        RETURNING *`,
       [
-        name,
-        email,
-        phone,
-        specialization,
-        department,
-        qualification,
+        name.trim(),
+        email ? email.trim() : null,
+        phone ? phone.trim() : null,
+        specialization.trim(),
+        department.trim(),
+        qualification ? qualification.trim() : null,
         consultationFee ? Number(consultationFee) : 0,
         availableDays || [],
         status || "Active",
@@ -85,7 +96,7 @@ const createDoctor = async (req, res) => {
 
     res.status(201).json(mapDoctor(rows[0]));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: formatErrorMessage(error) });
   }
 };
 
@@ -118,33 +129,33 @@ const updateDoctor = async (req, res) => {
        WHERE id = $10
        RETURNING *`,
       [
-        name,
-        email,
-        phone,
-        specialization,
-        department,
-        qualification,
-        consultationFee ? Number(consultationFee) : null,
+        name ? name.trim() : null,
+        email ? email.trim() : null,
+        phone ? phone.trim() : null,
+        specialization ? specialization.trim() : null,
+        department ? department.trim() : null,
+        qualification ? qualification.trim() : null,
+        consultationFee !== undefined && consultationFee !== null && consultationFee !== "" ? Number(consultationFee) : null,
         availableDays,
         status,
         req.params.id,
       ]
     );
 
-    if (!rows.length) return res.status(404).json({ message: "Doctor not found" });
+    if (!rows.length) return res.status(404).json({ message: "Doctor not found." });
     res.json(mapDoctor(rows[0]));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: formatErrorMessage(error) });
   }
 };
 
 const deleteDoctor = async (req, res) => {
   try {
     const { rows } = await db.query("DELETE FROM doctors WHERE id = $1 RETURNING *", [req.params.id]);
-    if (!rows.length) return res.status(404).json({ message: "Doctor not found" });
-    res.json({ message: "Doctor removed" });
+    if (!rows.length) return res.status(404).json({ message: "Doctor not found." });
+    res.json({ message: "Doctor removed." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: formatErrorMessage(error) });
   }
 };
 

@@ -15,11 +15,13 @@ CREATE TABLE IF NOT EXISTS patients (
   email VARCHAR(255),
   phone VARCHAR(50) NOT NULL,
   age INTEGER NOT NULL,
+  date_of_birth DATE,
   gender VARCHAR(20) NOT NULL,
   address TEXT,
   blood_group VARCHAR(10),
   medical_history TEXT,
   emergency_contact VARCHAR(100),
+  photo TEXT,
   status VARCHAR(20) DEFAULT 'Active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

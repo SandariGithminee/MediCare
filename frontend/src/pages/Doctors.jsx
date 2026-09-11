@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Phone, Star, Clock } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Phone, Star, Clock, AlertCircle } from "lucide-react";
 import api from "../api/axios";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
@@ -17,6 +17,52 @@ const emptyForm = {
   status: "Active",
 };
 
+const validateDoctor = (data) => {
+  const errors = {};
+
+  if (!data.name || !data.name.trim()) {
+    errors.name = "Doctor name is required.";
+  } else if (data.name.trim().length < 2) {
+    errors.name = "Name must be at least 2 characters.";
+  }
+
+  if (!data.specialization || !data.specialization.trim()) {
+    errors.specialization = "Specialization is required.";
+  }
+
+  if (!data.department || !data.department.trim()) {
+    errors.department = "Department is required.";
+  }
+
+  const rawDigits = (data.phone || "").replace(/\D/g, "");
+  if (!data.phone || !data.phone.trim()) {
+    errors.phone = "Phone number is required.";
+  } else if (rawDigits.length < 7 || rawDigits.length > 15) {
+    errors.phone = "Enter a valid phone number (7 to 15 digits).";
+  }
+
+  if (data.email && data.email.trim()) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(data.email.trim())) {
+      errors.email = "Please enter a valid email address.";
+    }
+  }
+
+  if (data.fee !== undefined && data.fee !== null && data.fee !== "") {
+    if (Number(data.fee) < 0) {
+      errors.fee = "Consultation fee cannot be negative.";
+    }
+  }
+
+  if (data.experience !== undefined && data.experience !== null && data.experience !== "") {
+    if (Number(data.experience) < 0) {
+      errors.experience = "Experience cannot be negative.";
+    }
+  }
+
+  return errors;
+};
+
 const doctorAvatars = [
   "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&h=200&fit=crop",
   "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=200&h=200&fit=crop",
@@ -32,6 +78,8 @@ const Doctors = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const fetchDoctors = async (q = "") => {
     setLoading(true);
@@ -39,7 +87,7 @@ const Doctors = () => {
       const { data } = await api.get(`/doctors${q ? `?search=${q}` : ""}`);
       setDoctors(data);
     } catch (error) {
-      toast.error("Failed to load doctors");
+      toast.error(error.friendlyMessage || "Failed to load doctors");
     } finally {
       setLoading(false);
     }
@@ -56,44 +104,77 @@ const Doctors = () => {
 
   const openAddModal = () => {
     setForm(emptyForm);
+    setErrors({});
+    setTouched({});
     setEditingId(null);
     setModalOpen(true);
   };
 
   const openEditModal = (doc) => {
     setForm(doc);
-    setEditingId(doc._id);
+    setErrors({});
+    setTouched({});
+    setEditingId(doc._id || doc.id);
     setModalOpen(true);
   };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const nextForm = { ...form, [name]: value };
+    setForm(nextForm);
+
+    if (errors[name]) {
+      const liveErrors = validateDoctor(nextForm);
+      setErrors((prev) => ({ ...prev, [name]: liveErrors[name] || "" }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const currentErrors = validateDoctor(form);
+    if (currentErrors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: currentErrors[name] }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const validationErrors = validateDoctor(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      const allTouched = Object.keys(form).reduce((acc, k) => ({ ...acc, [k]: true }), {});
+      setTouched(allTouched);
+      const firstMsg = Object.values(validationErrors)[0];
+      toast.error(firstMsg || "Please correct the highlighted fields before submitting.");
+      return;
+    }
+
     try {
       if (editingId) {
         await api.put(`/doctors/${editingId}`, form);
-        toast.success("Doctor updated");
+        toast.success("Doctor details updated");
       } else {
         const photo = doctorAvatars[Math.floor(Math.random() * doctorAvatars.length)];
         await api.post("/doctors", { ...form, photo });
-        toast.success("Doctor added");
+        toast.success("Doctor added successfully");
       }
       setModalOpen(false);
       fetchDoctors(search);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+      toast.error(error.friendlyMessage || error.response?.data?.message || "Failed to save doctor");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Remove this doctor?")) return;
+    if (!confirm("Are you sure you want to remove this doctor?")) return;
     try {
       await api.delete(`/doctors/${id}`);
       toast.success("Doctor removed");
       fetchDoctors(search);
     } catch (error) {
-      toast.error("Failed to delete doctor");
+      toast.error(error.friendlyMessage || "Failed to delete doctor");
     }
   };
 
@@ -180,39 +261,134 @@ const Doctors = () => {
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? "Edit Doctor" : "Add Doctor"}>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label className="label-field">Full Name</label>
-            <input name="name" required value={form.name} onChange={handleChange} className="input-field" placeholder="Dr. Jane Doe" />
+            <label className="label-field">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`input-field ${touched.name && errors.name ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+              placeholder="Dr. Jane Doe"
+            />
+            {touched.name && errors.name && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle size={12} className="shrink-0" /> {errors.name}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label-field">Specialization</label>
-              <input name="specialization" required value={form.specialization} onChange={handleChange} className="input-field" />
+              <label className="label-field">
+                Specialization <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="specialization"
+                value={form.specialization}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.specialization && errors.specialization ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+                placeholder="e.g. Cardiologist"
+              />
+              {touched.specialization && errors.specialization && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.specialization}
+                </p>
+              )}
             </div>
             <div>
-              <label className="label-field">Department</label>
-              <input name="department" required value={form.department} onChange={handleChange} className="input-field" />
+              <label className="label-field">
+                Department <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="department"
+                value={form.department}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.department && errors.department ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+                placeholder="e.g. Cardiology"
+              />
+              {touched.department && errors.department && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.department}
+                </p>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label-field">Phone</label>
-              <input name="phone" required value={form.phone} onChange={handleChange} className="input-field" />
+              <label className="label-field">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.phone && errors.phone ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+                placeholder="+1-555-0150"
+              />
+              {touched.phone && errors.phone && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.phone}
+                </p>
+              )}
             </div>
             <div>
-              <label className="label-field">Email</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange} className="input-field" />
+              <label className="label-field">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.email && errors.email ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+                placeholder="doctor@hospital.com"
+              />
+              {touched.email && errors.email && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.email}
+                </p>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label-field">Experience (yrs)</label>
-              <input type="number" name="experience" value={form.experience} onChange={handleChange} className="input-field" />
+              <label className="label-field">Experience (Years)</label>
+              <input
+                type="number"
+                name="experience"
+                min="0"
+                value={form.experience}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.experience && errors.experience ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+              />
+              {touched.experience && errors.experience && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.experience}
+                </p>
+              )}
             </div>
             <div>
-              <label className="label-field">Consultation Fee</label>
-              <input type="number" name="fee" value={form.fee} onChange={handleChange} className="input-field" />
+              <label className="label-field">Consultation Fee (Rs.)</label>
+              <input
+                type="number"
+                name="fee"
+                min="0"
+                value={form.fee}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`input-field ${touched.fee && errors.fee ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" : ""}`}
+              />
+              {touched.fee && errors.fee && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.fee}
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -223,7 +399,7 @@ const Doctors = () => {
               <option>Inactive</option>
             </select>
           </div>
-          <button type="submit" className="btn-primary w-full">
+          <button type="submit" className="btn-primary w-full shadow-md hover:shadow-lg transition">
             {editingId ? "Update Doctor" : "Add Doctor"}
           </button>
         </form>

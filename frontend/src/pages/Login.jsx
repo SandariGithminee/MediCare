@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HeartPulse, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { HeartPulse, Mail, Lock, Eye, EyeOff, AlertCircle, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -9,19 +9,40 @@ const Login = () => {
   const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState(null);
+  const [resending, setResending] = useState(false);
+  const { login, resendActivation } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setUnconfirmedEmail(null);
     try {
       await login(email, password);
       navigate("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed. Check your backend server.");
+      if (error.isUnconfirmed) {
+        setUnconfirmedEmail(email);
+        toast.error(error.message);
+      } else {
+        toast.error(error.message || error.response?.data?.message || "Invalid login credentials.");
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    try {
+      await resendActivation(unconfirmedEmail);
+      toast.success("Activation email resent! Please check your inbox.");
+    } catch (err) {
+      toast.error(err.message || "Failed to resend activation email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -52,7 +73,29 @@ const Login = () => {
           </Link>
 
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Welcome back</h1>
-          <p className="text-gray-500 mb-8">Login to access your dashboard.</p>
+          <p className="text-gray-500 mb-6">Login to access your dashboard.</p>
+
+          {unconfirmedEmail && (
+            <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                <div>
+                  <p className="font-semibold mb-1">Account not activated</p>
+                  <p className="mb-2 text-amber-800">
+                    A confirmation email was sent to <span className="font-semibold">{unconfirmedEmail}</span>. Please click the link in your email to activate your account.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="inline-flex items-center gap-1.5 font-semibold text-amber-950 underline hover:no-underline"
+                  >
+                    <Send size={12} /> {resending ? "Resending..." : "Resend confirmation email"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -70,7 +113,15 @@ const Login = () => {
               </div>
             </div>
             <div>
-              <label className="label-field">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label-field mb-0">Password</label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
@@ -97,14 +148,15 @@ const Login = () => {
           </form>
 
           <div className="bg-primary-50 rounded-xl p-4 mt-6 text-xs text-primary-700 leading-relaxed">
-            <p className="font-semibold mb-1">Demo credentials (after seeding):</p>
+            <p className="font-semibold mb-1">Demo credentials:</p>
             <p>admin@medicare.com / admin123</p>
             <p>doctor@medicare.com / doctor123</p>
+            <p>reception@medicare.com / reception123</p>
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary-600 font-semibold">
+            <Link to="/register" className="text-primary-600 font-semibold hover:underline">
               Sign up
             </Link>
           </p>

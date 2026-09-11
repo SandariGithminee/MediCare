@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getFriendlyErrorMessage } from "../utils/errorHandler";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
@@ -19,6 +20,7 @@ api.interceptors.response.use(
       localStorage.removeItem("medicareUser");
       window.location.href = "/login";
     }
+    error.friendlyMessage = getFriendlyErrorMessage(error);
     return Promise.reject(error);
   }
 );
