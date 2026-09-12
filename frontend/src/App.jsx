@@ -23,6 +23,8 @@ import Reports from "./pages/Reports";
 import AuditLogs from "./pages/AuditLogs";
 import Layout from "./components/Layout";
 
+import { isRouteAllowed, getDefaultRouteForRole } from "./utils/rbac";
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -69,7 +71,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, path }) => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -79,6 +81,13 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+
+  // Enforce role-based access to route; redirect unauthorized roles to their default portal page
+  if (path && !isRouteAllowed(path, user.role)) {
+    const fallbackPath = getDefaultRouteForRole(user.role);
+    return <Navigate to={fallbackPath} replace />;
+  }
+
   return <Layout>{children}</Layout>;
 };
 
@@ -95,19 +104,19 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
 
-          {/* Protected HMS Application Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/patients" element={<ProtectedRoute><Patients /></ProtectedRoute>} />
-          <Route path="/doctors" element={<ProtectedRoute><Doctors /></ProtectedRoute>} />
-          <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
-          <Route path="/emr" element={<ProtectedRoute><MedicalRecords /></ProtectedRoute>} />
-          <Route path="/laboratory" element={<ProtectedRoute><Laboratory /></ProtectedRoute>} />
-          <Route path="/pharmacy" element={<ProtectedRoute><Pharmacy /></ProtectedRoute>} />
-          <Route path="/admissions" element={<ProtectedRoute><Admissions /></ProtectedRoute>} />
-          <Route path="/staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
-          <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+          {/* Protected HMS Application Routes with RBAC Enforcement */}
+          <Route path="/dashboard" element={<ProtectedRoute path="/dashboard"><Dashboard /></ProtectedRoute>} />
+          <Route path="/patients" element={<ProtectedRoute path="/patients"><Patients /></ProtectedRoute>} />
+          <Route path="/doctors" element={<ProtectedRoute path="/doctors"><Doctors /></ProtectedRoute>} />
+          <Route path="/appointments" element={<ProtectedRoute path="/appointments"><Appointments /></ProtectedRoute>} />
+          <Route path="/emr" element={<ProtectedRoute path="/emr"><MedicalRecords /></ProtectedRoute>} />
+          <Route path="/laboratory" element={<ProtectedRoute path="/laboratory"><Laboratory /></ProtectedRoute>} />
+          <Route path="/pharmacy" element={<ProtectedRoute path="/pharmacy"><Pharmacy /></ProtectedRoute>} />
+          <Route path="/admissions" element={<ProtectedRoute path="/admissions"><Admissions /></ProtectedRoute>} />
+          <Route path="/staff" element={<ProtectedRoute path="/staff"><Staff /></ProtectedRoute>} />
+          <Route path="/billing" element={<ProtectedRoute path="/billing"><Billing /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
+          <Route path="/audit-logs" element={<ProtectedRoute path="/audit-logs"><AuditLogs /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

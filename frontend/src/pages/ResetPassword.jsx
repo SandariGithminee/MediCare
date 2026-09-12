@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { HeartPulse, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../api/supabase";
+import { getDefaultRouteForRole } from "../utils/rbac";
 import toast from "react-hot-toast";
 
 const ResetPassword = () => {
@@ -11,7 +12,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const { resetPassword } = useAuth();
+  const { user, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,8 +47,10 @@ const ResetPassword = () => {
     try {
       await resetPassword(password);
       toast.success("Password successfully updated! Logging you in...");
+      const cachedUser = JSON.parse(localStorage.getItem("medicareUser") || "{}");
+      const userRole = user?.role || cachedUser?.role;
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate(getDefaultRouteForRole(userRole));
       }, 1000);
     } catch (error) {
       toast.error(error.message || "Failed to reset password. The link may have expired.");

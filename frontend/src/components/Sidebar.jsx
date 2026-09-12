@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import { isRouteAllowed } from "../utils/rbac";
 
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -36,13 +37,17 @@ const links = [
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const { user } = useAuth();
-  const isAdmin = (user?.role || "").toLowerCase() === "admin";
+  const userRole = user?.role || "";
+  const isAdmin = userRole.toLowerCase() === "admin";
 
-  const navLinks = [
+  const allLinks = [
     links[0],
     ...(isAdmin ? [{ to: "/dashboard?tab=approvals", label: "User Approvals", icon: ShieldCheck }] : []),
     ...links.slice(1),
   ];
+
+  // Filter navigation links according to role permissions
+  const navLinks = allLinks.filter((link) => isRouteAllowed(link.to, userRole));
   return (
     <>
       {sidebarOpen && (
@@ -93,8 +98,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
         <div className="p-4">
           <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm text-xs">
-            <p className="font-semibold text-white">HMS Specification Compliant</p>
-            <p className="text-white/70 mt-0.5">12 Core Hospital Modules Active</p>
+            <p className="font-semibold text-white capitalize">{user?.role || "Staff"} Portal</p>
+            <p className="text-white/70 mt-0.5">{navLinks.length} Module{navLinks.length !== 1 ? "s" : ""} Active</p>
           </div>
         </div>
       </aside>

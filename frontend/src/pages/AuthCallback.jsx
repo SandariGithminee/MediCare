@@ -2,12 +2,19 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartPulse, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "../api/supabase";
+import { getDefaultRouteForRole } from "../utils/rbac";
 import toast from "react-hot-toast";
 
 const AuthCallback = () => {
   const [status, setStatus] = useState("verifying"); // 'verifying', 'success', 'error'
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
+
+  const getTargetRoute = (userSession) => {
+    const cachedUser = JSON.parse(localStorage.getItem("medicareUser") || "{}");
+    const role = userSession?.user?.user_metadata?.role || cachedUser?.role;
+    return getDefaultRouteForRole(role);
+  };
 
   useEffect(() => {
     async function handleAuthCallback() {
@@ -25,7 +32,7 @@ const AuthCallback = () => {
           setStatus("success");
           toast.success("Account activated successfully!");
           setTimeout(() => {
-            navigate("/dashboard");
+            navigate(getTargetRoute(session));
           }, 1500);
         } else {
           // Listen briefly for the auth event if token exchange is still in flight
@@ -34,7 +41,7 @@ const AuthCallback = () => {
               setStatus("success");
               toast.success("Account activated successfully!");
               setTimeout(() => {
-                navigate("/dashboard");
+                navigate(getTargetRoute(newSession));
               }, 1500);
             }
           });
@@ -77,12 +84,12 @@ const AuthCallback = () => {
               <CheckCircle2 size={32} />
             </div>
             <h2 className="text-xl font-bold text-gray-800 mb-2">Account Activated!</h2>
-            <p className="text-sm text-gray-600 mb-6">Your email has been confirmed. Redirecting to your dashboard...</p>
+            <p className="text-sm text-gray-600 mb-6">Your email has been confirmed. Redirecting to your hospital portal...</p>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(getTargetRoute())}
               className="btn-primary w-full"
             >
-              Go to Dashboard
+              Continue to Portal
             </button>
           </div>
         )}

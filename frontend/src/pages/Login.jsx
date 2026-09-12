@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HeartPulse, Mail, Lock, Eye, EyeOff, AlertCircle, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultRouteForRole } from "../utils/rbac";
 import toast from "react-hot-toast";
 
 const Login = () => {
@@ -11,16 +12,25 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState(null);
   const [resending, setResending] = useState(false);
-  const { login, resendActivation } = useAuth();
+  const { user, login, resendActivation } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      navigate(getDefaultRouteForRole(user.role), { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setUnconfirmedEmail(null);
     try {
-      await login(email, password);
-      navigate("/dashboard");
+      const authRes = await login(email, password);
+      const cachedUser = JSON.parse(localStorage.getItem("medicareUser") || "{}");
+      const userRole = authRes?.role || authRes?.user?.user_metadata?.role || cachedUser?.role;
+      const targetRoute = getDefaultRouteForRole(userRole);
+      navigate(targetRoute);
     } catch (error) {
       if (error.isUnconfirmed) {
         setUnconfirmedEmail(email);
