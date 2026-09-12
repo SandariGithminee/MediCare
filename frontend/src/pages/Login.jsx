@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
 const Login = () => {
-  const [email, setEmail] = useState("admin@medicare.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState(null);
@@ -147,12 +147,6 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="bg-primary-50 rounded-xl p-4 mt-6 text-xs text-primary-700 leading-relaxed">
-            <p className="font-semibold mb-1">Demo credentials:</p>
-            <p>admin@medicare.com / admin123</p>
-            <p>doctor@medicare.com / doctor123</p>
-            <p>reception@medicare.com / reception123</p>
-          </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{" "}

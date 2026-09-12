@@ -31,11 +31,13 @@ const registerUser = async (req, res) => {
 
     // 1. Try Supabase signUp first
     try {
+      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
       const { data: sbData, error: sbError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { name, role: role || "receptionist" },
+          emailRedirectTo: `${clientUrl}/auth/callback`,
         },
       });
 
