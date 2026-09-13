@@ -5,11 +5,23 @@
 export function getFriendlyErrorMessage(error, defaultMessage = "Something went wrong. Please try again.") {
   if (!error) return defaultMessage;
 
+  console.error("API error details:", {
+    status: error.response?.status,
+    statusText: error.response?.statusText,
+    data: error.response?.data,
+    message: error.message,
+    url: error.config?.url,
+  });
+
   // If string
   if (typeof error === "string") return error;
 
   // Axios response data message
-  const serverMsg = error.response?.data?.message || error.response?.data?.error;
+  const serverMsg =
+    error.response?.data?.message ||
+    error.response?.data?.error ||
+    (typeof error.response?.data === "string" ? error.response.data : null);
+
   if (serverMsg && typeof serverMsg === "string") {
     if (serverMsg.includes("invalid input syntax for type integer")) {
       return "Please enter a valid number for numeric fields.";
@@ -31,7 +43,11 @@ export function getFriendlyErrorMessage(error, defaultMessage = "Something went 
 
   // Axios network or timeout errors
   if (error.code === "ERR_NETWORK" || error.message?.includes("Network Error")) {
-    return "Unable to connect to the server. Please check your internet connection.";
+    return "Unable to connect to the server. Please check your backend URL and internet connection.";
+  }
+
+  if (error.response?.status === 401) {
+    return "Session expired. Please log in again.";
   }
 
   if (error.response?.status === 403) {
@@ -39,11 +55,11 @@ export function getFriendlyErrorMessage(error, defaultMessage = "Something went 
   }
 
   if (error.response?.status === 404) {
-    return "The requested record was not found.";
+    return "The requested record or endpoint was not found.";
   }
 
   if (error.response?.status === 500) {
-    return "The server encountered an issue processing your request. Please try again.";
+    return serverMsg || "Backend server error (500). Please check your database connection.";
   }
 
   if (error.message && !error.message.includes("status code") && !error.message.includes("Request failed with")) {
