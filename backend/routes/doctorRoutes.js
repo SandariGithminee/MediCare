@@ -9,11 +9,11 @@ const {
 } = require("../controllers/doctorController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.route("/").get(protect, getDoctors).post(protect, authorize("admin"), createDoctor);
+router.route("/").get(protect, getDoctors).post(protect, authorize("admin", "doctor", "hr", "receptionist", "staff"), createDoctor);
 router
   .route("/:id")
   .get(protect, getDoctorById)
-  .put(protect, authorize("admin"), updateDoctor)
-  .delete(protect, authorize("admin"), deleteDoctor);
+  .put(protect, authorize("admin", "doctor", "hr", "receptionist", "staff"), updateDoctor)
+  .delete(protect, authorize("admin", "hr", "doctor"), deleteDoctor);
 
 module.exports = router;

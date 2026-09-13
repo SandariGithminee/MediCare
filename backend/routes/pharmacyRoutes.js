@@ -14,14 +14,14 @@ const { protect, authorize } = require("../middleware/authMiddleware");
 
 // Prescription processing routes (Must be placed before /:id)
 router.get("/prescriptions", protect, getPrescriptions);
-router.post("/prescriptions/:recordId/dispense", protect, authorize("admin", "pharmacist", "doctor"), dispensePrescription);
+router.post("/prescriptions/:recordId/dispense", protect, authorize("admin", "pharmacist", "doctor", "nurse", "staff"), dispensePrescription);
 
-router.route("/").get(protect, getMedicines).post(protect, authorize("admin", "pharmacist"), createMedicine);
+router.route("/").get(protect, getMedicines).post(protect, authorize("admin", "pharmacist", "doctor", "nurse", "staff"), createMedicine);
 router
     .route("/:id")
     .get(protect, getMedicineById)
-    .put(protect, authorize("admin", "pharmacist"), updateMedicine)
+    .put(protect, authorize("admin", "pharmacist", "doctor", "nurse", "staff"), updateMedicine)
     .delete(protect, authorize("admin", "pharmacist"), deleteMedicine);
-router.post("/:id/dispense", protect, authorize("admin", "pharmacist", "doctor"), dispenseMedicine);
+router.post("/:id/dispense", protect, authorize("admin", "pharmacist", "doctor", "nurse", "staff"), dispenseMedicine);
 
 module.exports = router;

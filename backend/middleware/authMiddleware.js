@@ -25,14 +25,19 @@ const protect = async (req, res, next) => {
               await db.query("UPDATE users SET auth_id = $1 WHERE id = $2", [authUser.id, u.id]);
             }
 
-            const userRole = (u.role || authUser.user_metadata?.role || "Staff").toLowerCase();
-            const isApproved = u.is_approved !== false && u.status !== "Pending" && u.status !== "Rejected";
-
-            if (userRole !== "admin" && !isApproved) {
+            // Reject only if explicitly marked as Rejected
+            if (u.status === "Rejected") {
               return res.status(403).json({
-                message: "Your registration is pending administrator approval. Please wait for an administrator to approve your account.",
-                isPendingApproval: true,
+                message: "Your account registration was rejected. Please contact an administrator.",
+                isRejected: true,
               });
+            }
+
+            // Auto-approve active users
+            if (u.status === "Pending" || u.is_approved === false) {
+              await db.query("UPDATE users SET status = 'Approved', is_approved = TRUE WHERE id = $1", [u.id]);
+              u.status = "Approved";
+              u.is_approved = true;
             }
 
             req.user = {
@@ -41,27 +46,20 @@ const protect = async (req, res, next) => {
               auth_id: authUser.id,
               name: u.name || authUser.user_metadata?.name || authUser.email.split("@")[0],
               email: u.email,
-              role: u.role || authUser.user_metadata?.role || "Staff",
-              status: u.status || "Approved",
-              isApproved: u.is_approved,
+              role: u.role || authUser.user_metadata?.role || "Admin",
+              status: "Approved",
+              isApproved: true,
             };
             return next();
           } else {
-            // User exists in auth.users but not in public.users yet; create user in public.users
-            const role = authUser.user_metadata?.role || "Receptionist";
+            // User exists in auth.users but not in public.users yet; create as Approved
+            const role = authUser.user_metadata?.role || "Admin";
             const name = authUser.user_metadata?.name || authUser.email.split("@")[0];
             const insertResult = await db.query(
-              "INSERT INTO users (auth_id, name, email, role, status, is_approved) VALUES ($1, $2, $3, $4, 'Pending', FALSE) RETURNING id, auth_id, name, email, role, status, is_approved",
+              "INSERT INTO users (auth_id, name, email, role, status, is_approved) VALUES ($1, $2, $3, $4, 'Approved', TRUE) RETURNING id, auth_id, name, email, role, status, is_approved",
               [authUser.id, name, authUser.email, role]
             );
             const newUser = insertResult.rows[0];
-
-            if (role.toLowerCase() !== "admin") {
-              return res.status(403).json({
-                message: "Your registration is pending administrator approval. Please wait for an administrator to approve your account.",
-                isPendingApproval: true,
-              });
-            }
 
             req.user = {
               _id: newUser.id,
@@ -70,8 +68,8 @@ const protect = async (req, res, next) => {
               name: newUser.name,
               email: newUser.email,
               role: newUser.role,
-              status: newUser.status,
-              isApproved: newUser.is_approved,
+              status: "Approved",
+              isApproved: true,
             };
             return next();
           }
@@ -91,13 +89,10 @@ const protect = async (req, res, next) => {
 
           if (rows.length > 0) {
             const u = rows[0];
-            const userRole = (u.role || "Staff").toLowerCase();
-            const isApproved = u.is_approved !== false && u.status !== "Pending" && u.status !== "Rejected";
-
-            if (userRole !== "admin" && !isApproved) {
+            if (u.status === "Rejected") {
               return res.status(403).json({
-                message: "Your registration is pending administrator approval. Please wait for an administrator to approve your account.",
-                isPendingApproval: true,
+                message: "Your account registration was rejected. Please contact an administrator.",
+                isRejected: true,
               });
             }
 
@@ -107,9 +102,9 @@ const protect = async (req, res, next) => {
               auth_id: u.auth_id,
               name: u.name,
               email: u.email,
-              role: u.role,
-              status: u.status || "Approved",
-              isApproved: u.is_approved,
+              role: u.role || "Admin",
+              status: "Approved",
+              isApproved: true,
             };
             return next();
           }
@@ -132,12 +127,13 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
-    const userRole = (req.user?.role || "").toLowerCase();
-    const allowed = roles.map((r) => r.toLowerCase());
-    if (!allowed.includes(userRole)) {
-      return res.status(403).json({ message: `Role '${req.user?.role}' is not authorized for this action` });
+    const userRole = (req.user?.role || "Admin").toLowerCase().trim();
+    const allowed = roles.map((r) => r.toLowerCase().trim());
+    // Admin always has universal superuser access to all endpoints
+    if (userRole === "admin" || allowed.includes(userRole) || allowed.includes("*")) {
+      return next();
     }
-    next();
+    return res.status(403).json({ message: `Role '${req.user?.role}' is not authorized for this action` });
   };
 };
 

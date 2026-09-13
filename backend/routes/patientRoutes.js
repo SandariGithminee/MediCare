@@ -13,7 +13,7 @@ router.route("/").get(protect, getPatients).post(protect, authorize("admin", "do
 router
   .route("/:id")
   .get(protect, getPatientById)
-  .put(protect, authorize("admin", "doctor", "nurse", "receptionist"), updatePatient)
-  .delete(protect, authorize("admin"), deletePatient);
+  .put(protect, authorize("admin", "doctor", "nurse", "receptionist", "staff", "hr"), updatePatient)
+  .delete(protect, authorize("admin", "hr", "doctor", "receptionist"), deletePatient);
 
 module.exports = router;
