@@ -56,9 +56,29 @@ const getStaffById = async (req, res) => {
 
 const createStaff = async (req, res) => {
     try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS staff (
+                id SERIAL PRIMARY KEY,
+                employee_id VARCHAR(50) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                role VARCHAR(100) NOT NULL,
+                department VARCHAR(100) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                phone VARCHAR(50) NOT NULL,
+                salary NUMERIC DEFAULT 0,
+                join_date DATE DEFAULT CURRENT_DATE,
+                status VARCHAR(50) DEFAULT 'Active',
+                attendance JSONB DEFAULT '[]'::jsonb,
+                leaves JSONB DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         const countResult = await db.query("SELECT COUNT(*) FROM staff");
         const count = Number(countResult?.rows?.[0]?.count || 0);
-        const employeeId = req.body.employeeId || `EMP-${String(count + 101).padStart(4, "0")}`;
+        const randomSuffix = Math.floor(100 + Math.random() * 900);
+        const employeeId = req.body.employeeId || `EMP-${String(count + 101).padStart(4, "0")}-${randomSuffix}`;
         const { name, role, department, email, phone, salary, joinDate, status } = req.body;
 
         if (!name || name.trim().length < 2) {
@@ -74,17 +94,17 @@ const createStaff = async (req, res) => {
 
         const { rows } = await db.query(
             `INSERT INTO staff 
-       (employee_id, name, role, department, email, phone, salary, join_date, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+       (employee_id, name, role, department, email, phone, salary, join_date, status, attendance, leaves) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '[]'::jsonb, '[]'::jsonb) 
        RETURNING *`,
             [
                 employeeId,
                 name.trim(),
                 role || "Nurse",
                 department || "General",
-                email ? email.trim() : null,
-                phone ? phone.trim() : null,
-                salary ? Number(salary) : 0,
+                email ? email.trim() : "staff@medicare.com",
+                phone ? phone.trim() : "0700000000",
+                salary !== undefined && !isNaN(Number(salary)) ? Number(salary) : 0,
                 joinDate || new Date().toISOString().split("T")[0],
                 status || "Active",
             ]
@@ -92,6 +112,7 @@ const createStaff = async (req, res) => {
 
         res.status(201).json(mapStaff(rows[0]));
     } catch (error) {
+        console.error("createStaff error:", error);
         res.status(400).json({ message: formatErrorMessage(error) });
     }
 };

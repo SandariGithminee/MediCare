@@ -54,17 +54,36 @@ const Staff = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!form.name || form.name.trim().length < 2) {
+            return toast.error("Please enter a valid full name (at least 2 characters).");
+        }
         const rawDigits = (form.phone || "").replace(/\D/g, "");
         if (!form.phone || !form.phone.trim()) {
             return toast.error("Phone number is required.");
         }
         if (rawDigits.length !== 10) {
-            return toast.error("Phone number must be exactly 10 digits.");
+            return toast.error("Phone number must be exactly 10 digits (e.g. 0705552733).");
+        }
+        if (!form.email || !form.email.includes("@") || !form.email.includes(".")) {
+            return toast.error("Please enter a complete and valid email address (e.g. name@gmail.com).");
         }
         try {
-            await api.post("/staff", form);
-            toast.success("Employee registered");
+            await api.post("/staff", {
+                ...form,
+                phone: rawDigits,
+                salary: Number(form.salary) || 0,
+            });
+            toast.success("Employee registered successfully!");
             setModalOpen(false);
+            setForm({
+                name: "",
+                role: "Nurse",
+                department: "ICU",
+                email: "",
+                phone: "",
+                salary: 40000,
+                status: "Active",
+            });
             fetchStaff(search);
         } catch (error) {
             toast.error(error.friendlyMessage || error.response?.data?.message || "Failed to add employee");
