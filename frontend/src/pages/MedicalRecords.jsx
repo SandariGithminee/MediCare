@@ -35,17 +35,23 @@ const MedicalRecords = () => {
                 api.get("/patients"),
                 api.get("/doctors"),
             ]);
-            setRecords(resRec.data);
-            setPatients(resPat.data);
-            setDoctors(resDoc.data);
-            if (resPat.data.length && resDoc.data.length) {
+            const recList = Array.isArray(resRec.data) ? resRec.data : [];
+            const patList = Array.isArray(resPat.data) ? resPat.data : [];
+            const docList = Array.isArray(resDoc.data) ? resDoc.data : [];
+            setRecords(recList);
+            setPatients(patList);
+            setDoctors(docList);
+            if (patList.length && docList.length) {
                 setForm((prev) => ({
                     ...prev,
-                    patient: resPat.data[0]._id,
-                    doctor: resDoc.data[0]._id,
+                    patient: patList[0]._id,
+                    doctor: docList[0]._id,
                 }));
             }
         } catch (error) {
+            setRecords([]);
+            setPatients([]);
+            setDoctors([]);
             toast.error("Failed to load medical records");
         } finally {
             setLoading(false);
@@ -111,11 +117,13 @@ const MedicalRecords = () => {
         }
     };
 
-    const filteredRecords = records.filter((r) => {
-        const patName = r.patient ? `${r.patient.firstName} ${r.patient.lastName}`.toLowerCase() : "";
+    const safeRecords = Array.isArray(records) ? records : [];
+    const filteredRecords = safeRecords.filter((r) => {
+        if (!r) return false;
+        const patName = r.patient ? `${r.patient.firstName || ""} ${r.patient.lastName || ""}`.toLowerCase() : "";
         const diag = r.diagnosis ? r.diagnosis.toLowerCase() : "";
-        const docName = r.doctor ? r.doctor.name.toLowerCase() : "";
-        const s = search.toLowerCase();
+        const docName = r.doctor ? (r.doctor.name || "").toLowerCase() : "";
+        const s = (search || "").toLowerCase();
         return patName.includes(s) || diag.includes(s) || docName.includes(s);
     });
 

@@ -31,17 +31,23 @@ const Admissions = () => {
                 api.get("/patients"),
                 api.get("/doctors"),
             ]);
-            setAdmissions(resAdm.data);
-            setPatients(resPat.data);
-            setDoctors(resDoc.data);
-            if (resPat.data.length && resDoc.data.length) {
+            const admList = Array.isArray(resAdm.data) ? resAdm.data : [];
+            const patList = Array.isArray(resPat.data) ? resPat.data : [];
+            const docList = Array.isArray(resDoc.data) ? resDoc.data : [];
+            setAdmissions(admList);
+            setPatients(patList);
+            setDoctors(docList);
+            if (patList.length && docList.length) {
                 setForm((prev) => ({
                     ...prev,
-                    patient: resPat.data[0]._id,
-                    doctor: resDoc.data[0]._id,
+                    patient: patList[0]._id,
+                    doctor: docList[0]._id,
                 }));
             }
         } catch (error) {
+            setAdmissions([]);
+            setPatients([]);
+            setDoctors([]);
             toast.error("Failed to load admission records");
         } finally {
             setLoading(false);
@@ -75,14 +81,16 @@ const Admissions = () => {
         }
     };
 
-    const filteredAdmissions = admissions.filter((a) => {
-        const patName = a.patient ? `${a.patient.firstName} ${a.patient.lastName}`.toLowerCase() : "";
+    const safeAdmissions = Array.isArray(admissions) ? admissions : [];
+    const filteredAdmissions = safeAdmissions.filter((a) => {
+        if (!a) return false;
+        const patName = a.patient ? `${a.patient.firstName || ""} ${a.patient.lastName || ""}`.toLowerCase() : "";
         const room = a.roomNumber ? a.roomNumber.toLowerCase() : "";
-        const s = search.toLowerCase();
+        const s = (search || "").toLowerCase();
         return patName.includes(s) || room.includes(s);
     });
 
-    const activeInpatients = admissions.filter((a) => a.status === "Admitted").length;
+    const activeInpatients = safeAdmissions.filter((a) => a && a.status === "Admitted").length;
 
     return (
         <div className="space-y-6">

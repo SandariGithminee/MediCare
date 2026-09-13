@@ -1,8 +1,12 @@
 import axios from "axios";
 import { getFriendlyErrorMessage } from "../utils/errorHandler";
 
+const rawBaseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const cleanBaseURL = rawBaseURL.replace(/\/+$/, "");
+const baseURL = cleanBaseURL.endsWith("/api") ? cleanBaseURL : `${cleanBaseURL}/api`;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL,
 });
 
 api.interceptors.request.use((config) => {

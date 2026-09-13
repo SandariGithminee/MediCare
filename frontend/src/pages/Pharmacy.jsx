@@ -86,8 +86,9 @@ const Pharmacy = () => {
         setLoading(true);
         try {
             const { data } = await api.get(`/pharmacy${q ? `?search=${q}` : ""}`);
-            setMedicines(data);
+            setMedicines(Array.isArray(data) ? data : (Array.isArray(data?.medicines) ? data.medicines : []));
         } catch (error) {
+            setMedicines([]);
             toast.error("Failed to load pharmacy inventory");
         } finally {
             setLoading(false);
@@ -98,8 +99,9 @@ const Pharmacy = () => {
         setLoadingRx(true);
         try {
             const { data } = await api.get("/pharmacy/prescriptions");
-            setPrescriptions(data);
+            setPrescriptions(Array.isArray(data) ? data : (Array.isArray(data?.prescriptions) ? data.prescriptions : []));
         } catch (error) {
+            setPrescriptions([]);
             toast.error("Failed to load prescription orders");
         } finally {
             setLoadingRx(false);
@@ -243,22 +245,26 @@ const Pharmacy = () => {
         setSlipModalOpen(true);
     };
 
-    const lowStockCount = medicines.filter((m) => m.quantityInStock <= m.minStockLevel).length;
+    const safeMedicines = Array.isArray(medicines) ? medicines : [];
+    const safePrescriptions = Array.isArray(prescriptions) ? prescriptions : [];
+
+    const lowStockCount = safeMedicines.filter((m) => m && m.quantityInStock <= m.minStockLevel).length;
 
     // Total pending prescription items across all orders
-    const pendingRxItemsCount = prescriptions.reduce((acc, o) => acc + (o.pendingCount || 0), 0);
+    const pendingRxItemsCount = safePrescriptions.reduce((acc, o) => acc + (o?.pendingCount || 0), 0);
 
     // Filter prescriptions
-    const filteredPrescriptions = prescriptions.filter((order) => {
+    const filteredPrescriptions = safePrescriptions.filter((order) => {
+        if (!order) return false;
         const matchesFilter =
             rxFilter === "all" ||
-            (rxFilter === "pending" && order.pendingCount > 0) ||
-            (rxFilter === "dispensed" && order.pendingCount === 0);
+            (rxFilter === "pending" && (order.pendingCount || 0) > 0) ||
+            (rxFilter === "dispensed" && (order.pendingCount || 0) === 0);
 
         const patName = `${order.patient?.firstName || ""} ${order.patient?.lastName || ""}`.toLowerCase();
         const docName = (order.doctor?.name || "").toLowerCase();
-        const rxNames = order.prescriptions.map((p) => p.medicineName.toLowerCase()).join(" ");
-        const s = rxSearch.toLowerCase();
+        const rxNames = (order.prescriptions || []).map((p) => (p?.medicineName || "").toLowerCase()).join(" ");
+        const s = (rxSearch || "").toLowerCase();
 
         const matchesSearch = !s || patName.includes(s) || docName.includes(s) || rxNames.includes(s);
 
@@ -266,8 +272,8 @@ const Pharmacy = () => {
     });
 
     // Currently selected medicine for calculation inside dispenseRx modal
-    const currentChosenMed = medicines.find(
-        (m) => String(m._id || m.id) === String(dispenseRxForm.medicineId)
+    const currentChosenMed = safeMedicines.find(
+        (m) => m && String(m._id || m.id) === String(dispenseRxForm.medicineId)
     );
     const calculatedRxTotal = currentChosenMed
         ? Number(currentChosenMed.unitPrice || 0) * Number(dispenseRxForm.quantity || 0)

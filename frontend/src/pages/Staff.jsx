@@ -38,9 +38,11 @@ const Staff = () => {
         setLoading(true);
         try {
             const { data } = await api.get(`/staff${q ? `?search=${q}` : ""}`);
-            setStaffList(data);
+            const list = Array.isArray(data) ? data : (Array.isArray(data?.staff) ? data.staff : []);
+            setStaffList(list);
         } catch (error) {
-            toast.error("Failed to load staff list");
+            setStaffList([]);
+            toast.error(error.friendlyMessage || "Failed to load staff list");
         } finally {
             setLoading(false);
         }
@@ -131,11 +133,13 @@ const Staff = () => {
         }
     };
 
-    const filteredStaff = staffList.filter((s) => {
+    const safeStaffList = Array.isArray(staffList) ? staffList : [];
+    const filteredStaff = safeStaffList.filter((s) => {
+        if (!s) return false;
         const name = s.name ? s.name.toLowerCase() : "";
         const dept = s.department ? s.department.toLowerCase() : "";
         const role = s.role ? s.role.toLowerCase() : "";
-        const q = search.toLowerCase();
+        const q = (search || "").toLowerCase();
         return name.includes(q) || dept.includes(q) || role.includes(q);
     });
 

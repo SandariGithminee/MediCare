@@ -12,8 +12,10 @@ const AuditLogs = () => {
         setLoading(true);
         try {
             const { data } = await api.get("/audit-logs");
-            setLogs(data);
+            const list = Array.isArray(data) ? data : (Array.isArray(data?.logs) ? data.logs : []);
+            setLogs(list);
         } catch (error) {
+            setLogs([]);
             toast.error("Failed to load audit logs");
         } finally {
             setLoading(false);
@@ -24,11 +26,13 @@ const AuditLogs = () => {
         fetchLogs();
     }, []);
 
-    const filteredLogs = logs.filter((l) => {
+    const safeLogs = Array.isArray(logs) ? logs : [];
+    const filteredLogs = safeLogs.filter((l) => {
+        if (!l) return false;
         const user = l.user ? l.user.toLowerCase() : "";
         const action = l.action ? l.action.toLowerCase() : "";
         const details = l.details ? l.details.toLowerCase() : "";
-        const s = search.toLowerCase();
+        const s = (search || "").toLowerCase();
         return user.includes(s) || action.includes(s) || details.includes(s);
     });
 

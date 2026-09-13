@@ -71,7 +71,7 @@ const getBillingById = async (req, res) => {
 
 const createBilling = async (req, res) => {
   try {
-    const { countResult } = await db.query("SELECT COUNT(*) FROM billing");
+    const countResult = await db.query("SELECT COUNT(*) FROM billing");
     const count = Number(countResult?.rows?.[0]?.count || 0);
     const invoiceNumber = req.body.invoiceNumber || `INV-${String(count + 1001).padStart(5, "0")}`;
 

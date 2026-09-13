@@ -56,7 +56,7 @@ const getStaffById = async (req, res) => {
 
 const createStaff = async (req, res) => {
     try {
-        const { countResult } = await db.query("SELECT COUNT(*) FROM staff");
+        const countResult = await db.query("SELECT COUNT(*) FROM staff");
         const count = Number(countResult?.rows?.[0]?.count || 0);
         const employeeId = req.body.employeeId || `EMP-${String(count + 101).padStart(4, "0")}`;
         const { name, role, department, email, phone, salary, joinDate, status } = req.body;

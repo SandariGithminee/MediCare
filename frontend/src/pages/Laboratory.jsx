@@ -44,17 +44,23 @@ const Laboratory = () => {
                 api.get("/patients"),
                 api.get("/doctors"),
             ]);
-            setLabTests(resLab.data);
-            setPatients(resPat.data);
-            setDoctors(resDoc.data);
-            if (resPat.data.length && resDoc.data.length) {
+            const labList = Array.isArray(resLab.data) ? resLab.data : [];
+            const patList = Array.isArray(resPat.data) ? resPat.data : [];
+            const docList = Array.isArray(resDoc.data) ? resDoc.data : [];
+            setLabTests(labList);
+            setPatients(patList);
+            setDoctors(docList);
+            if (patList.length && docList.length) {
                 setForm((prev) => ({
                     ...prev,
-                    patient: resPat.data[0]._id,
-                    doctor: resDoc.data[0]._id,
+                    patient: patList[0]._id,
+                    doctor: docList[0]._id,
                 }));
             }
         } catch (error) {
+            setLabTests([]);
+            setPatients([]);
+            setDoctors([]);
             toast.error("Failed to load laboratory data");
         } finally {
             setLoading(false);
@@ -128,10 +134,13 @@ const Laboratory = () => {
         setPrintModalOpen(true);
     };
 
-    const filteredTests = labTests.filter((t) => {
-        const patName = t.patient ? `${t.patient.firstName} ${t.patient.lastName}`.toLowerCase() : "";
+    const safeLabTests = Array.isArray(labTests) ? labTests : [];
+    const filteredTests = safeLabTests.filter((t) => {
+        if (!t) return false;
+        const patName = t.patient ? `${t.patient.firstName || ""} ${t.patient.lastName || ""}`.toLowerCase() : "";
         const testN = t.testName ? t.testName.toLowerCase() : "";
-        const matchesSearch = patName.includes(search.toLowerCase()) || testN.includes(search.toLowerCase());
+        const s = (search || "").toLowerCase();
+        const matchesSearch = patName.includes(s) || testN.includes(s);
         const matchesStatus = filterStatus === "All" || t.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
