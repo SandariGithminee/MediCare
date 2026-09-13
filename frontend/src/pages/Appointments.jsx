@@ -128,10 +128,13 @@ const Appointments = () => {
         api.get("/patients"),
         api.get("/doctors"),
       ]);
-      setAppointments(aRes.data);
-      setPatients(pRes.data);
-      setDoctors(dRes.data);
+      setAppointments(Array.isArray(aRes.data) ? aRes.data : []);
+      setPatients(Array.isArray(pRes.data) ? pRes.data : []);
+      setDoctors(Array.isArray(dRes.data) ? dRes.data : []);
     } catch (error) {
+      setAppointments([]);
+      setPatients([]);
+      setDoctors([]);
       toast.error("Failed to load appointments");
     } finally {
       setLoading(false);
@@ -164,9 +167,10 @@ const Appointments = () => {
   // Find currently selected doctor object
   const selectedDoctor = useMemo(() => {
     if (!form.doctor) return null;
+    const safeDocs = Array.isArray(doctors) ? doctors : [];
     return (
-      doctors.find(
-        (d) => String(d._id) === String(form.doctor) || String(d.id) === String(form.doctor)
+      safeDocs.find(
+        (d) => d && (String(d._id) === String(form.doctor) || String(d.id) === String(form.doctor))
       ) || null
     );
   }, [doctors, form.doctor]);
@@ -342,7 +346,9 @@ const Appointments = () => {
 
   // Group appointments by date string (YYYY-MM-DD)
   const apptsByDate = {};
-  appointments.forEach((a) => {
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+  safeAppointments.forEach((a) => {
+    if (!a) return;
     const d = a.date?.split("T")[0] || a.appointmentDate?.split("T")[0];
     if (d) {
       if (!apptsByDate[d]) apptsByDate[d] = [];

@@ -123,8 +123,10 @@ const Patients = () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/patients${q ? `?search=${q}` : ""}`);
-      setPatients(data);
+      const list = Array.isArray(data) ? data : (Array.isArray(data?.patients) ? data.patients : []);
+      setPatients(list);
     } catch (error) {
+      setPatients([]);
       toast.error(error.friendlyMessage || "Failed to load patients list.");
     } finally {
       setLoading(false);
@@ -313,7 +315,7 @@ const Patients = () => {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {patients.map((p) => (
+          {(Array.isArray(patients) ? patients : []).map((p) => (
             <div key={p._id || p.id} className="card hover:-translate-y-1 transition-transform flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between mb-3">

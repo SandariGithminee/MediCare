@@ -168,8 +168,10 @@ const Doctors = () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/doctors${q ? `?search=${q}` : ""}`);
-      setDoctors(data);
+      const list = Array.isArray(data) ? data : (Array.isArray(data?.doctors) ? data.doctors : []);
+      setDoctors(list);
     } catch (error) {
+      setDoctors([]);
       toast.error(error.friendlyMessage || "Failed to load doctors");
     } finally {
       setLoading(false);
@@ -188,15 +190,18 @@ const Doctors = () => {
   // Unique departments for filter chips
   const departmentFilterList = useMemo(() => {
     const depts = new Set();
-    doctors.forEach((d) => {
-      if (d.department) depts.add(d.department);
+    const safeDocs = Array.isArray(doctors) ? doctors : [];
+    safeDocs.forEach((d) => {
+      if (d && d.department) depts.add(d.department);
     });
     return ["All", ...Array.from(depts)];
   }, [doctors]);
 
   // Filtered doctors list
   const filteredDoctors = useMemo(() => {
-    return doctors.filter((d) => {
+    const safeDocs = Array.isArray(doctors) ? doctors : [];
+    return safeDocs.filter((d) => {
+      if (!d) return false;
       if (selectedDept !== "All" && d.department !== selectedDept) {
         return false;
       }

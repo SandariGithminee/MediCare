@@ -60,12 +60,16 @@ const Billing = () => {
     setLoading(true);
     try {
       const [bRes, pRes] = await Promise.all([api.get("/billing"), api.get("/patients")]);
-      setBills(bRes.data);
-      setPatients(pRes.data);
-      if (pRes.data.length) {
-        setForm((prev) => ({ ...prev, patient: pRes.data[0]._id }));
+      const billList = Array.isArray(bRes.data) ? bRes.data : [];
+      const patList = Array.isArray(pRes.data) ? pRes.data : [];
+      setBills(billList);
+      setPatients(patList);
+      if (patList.length) {
+        setForm((prev) => ({ ...prev, patient: patList[0]._id }));
       }
     } catch (error) {
+      setBills([]);
+      setPatients([]);
       toast.error("Failed to load billing records");
     } finally {
       setLoading(false);
@@ -168,17 +172,18 @@ const Billing = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openStatusModal(b)}
-                    className="cursor-pointer hover:opacity-80 transition transform hover:scale-105"
-                    title="Click to update payment status"
-                  >
-                    <Badge status={b.status} />
-                  </button>
+                  <div>
+                    <span className="text-xs font-mono font-bold text-primary-600">
+                      {b.invoiceNumber || `INV-${b._id?.slice(-5)}`}
+                    </span>
+                    <h3 className="font-bold text-gray-800">
+                      {b.patient?.firstName} {b.patient?.lastName}
+                    </h3>
+                  </div>
+                  <Badge status={b.status} />
                 </div>
                 <div className="space-y-1 text-xs text-gray-500 mb-4 max-h-24 overflow-y-auto bg-gray-50 p-2.5 rounded-lg">
-                  {b.items?.map((it, idx) => (
+                  {(Array.isArray(b.items) ? b.items : []).map((it, idx) => (
                     <div key={idx} className="flex justify-between">
                       <span>
                         <span className="font-semibold text-gray-700">[{it.category}]</span> {it.description}
@@ -229,7 +234,7 @@ const Billing = () => {
               </div>
             </div>
           ))}
-          {!bills.length && (
+          {!(Array.isArray(bills) && bills.length) && (
             <p className="text-gray-400 col-span-full text-center py-16">No invoices created yet.</p>
           )}
         </div>
@@ -247,7 +252,7 @@ const Billing = () => {
               onChange={(e) => setForm({ ...form, patient: e.target.value })}
               className="input-field"
             >
-              {patients.map((p) => (
+              {(Array.isArray(patients) ? patients : []).map((p) => (
                 <option key={p._id} value={p._id}>
                   {p.firstName} {p.lastName} ({p.phone})
                 </option>
