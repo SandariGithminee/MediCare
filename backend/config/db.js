@@ -38,12 +38,19 @@ const pool = new Pool({
 
 const connectDB = async () => {
   try {
+    if (!connectionString) {
+      console.warn("⚠️ DATABASE_URL is not provided or empty in environment variables.");
+      return;
+    }
     const client = await pool.connect();
     console.log("✅ Supabase PostgreSQL Connected successfully!");
     client.release();
   } catch (error) {
     console.error(`❌ PostgreSQL Connection Error: ${error.message}`);
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      // Only exit process in standalone local dev mode, not in serverless
+      process.exit(1);
+    }
   }
 };
 

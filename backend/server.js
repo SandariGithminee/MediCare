@@ -18,6 +18,10 @@ app.get("/", (req, res) => {
   res.json({ message: "🏥 Medicare Hospital Management System API is running..." });
 });
 
+app.get("/api", (req, res) => {
+  res.json({ message: "🏥 Medicare Hospital Management System API is running..." });
+});
+
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/patients", require("./routes/patientRoutes"));
 app.use("/api/doctors", require("./routes/doctorRoutes"));
