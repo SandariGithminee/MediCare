@@ -20,6 +20,7 @@ const buildMedicalRecordQuery = (whereClause = "", params = []) => {
 
 const mapMedicalRecord = (row) => {
     if (!row) return null;
+    const parsedVitals = typeof row.vitals === "string" ? JSON.parse(row.vitals) : row.vitals || {};
     return {
         _id: row.id,
         id: row.id,
@@ -44,7 +45,8 @@ const mapMedicalRecord = (row) => {
         date: row.record_date,
         diagnosis: row.diagnosis,
         symptoms: row.symptoms,
-        vitals: typeof row.vitals === "string" ? JSON.parse(row.vitals) : row.vitals || {},
+        vitals: parsedVitals,
+        vitalSigns: parsedVitals,
         prescriptions: typeof row.prescriptions === "string" ? JSON.parse(row.prescriptions) : row.prescriptions || [],
         treatmentPlan: row.treatment_plan,
         notes: row.notes,
@@ -90,11 +92,12 @@ const getMedicalRecordById = async (req, res) => {
 
 const createMedicalRecord = async (req, res) => {
     try {
-        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes, documents } = req.body;
+        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, vitalSigns, prescriptions, treatmentPlan, notes, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
         const aId = appointmentId || (typeof appointment === "object" ? appointment?._id || appointment?.id : appointment);
         const rDate = recordDate || date || new Date().toISOString().split("T")[0];
+        const vitalsData = vitals !== undefined ? vitals : vitalSigns;
 
         const insertResult = await db.query(
             `INSERT INTO medical_records 
@@ -107,7 +110,7 @@ const createMedicalRecord = async (req, res) => {
                 rDate,
                 diagnosis,
                 symptoms,
-                JSON.stringify(vitals || {}),
+                JSON.stringify(vitalsData || {}),
                 JSON.stringify(prescriptions || []),
                 treatmentPlan,
                 notes,
@@ -126,11 +129,12 @@ const createMedicalRecord = async (req, res) => {
 
 const updateMedicalRecord = async (req, res) => {
     try {
-        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, prescriptions, treatmentPlan, notes, documents } = req.body;
+        const { patient, doctor, appointment, patientId, doctorId, appointmentId, recordDate, date, diagnosis, symptoms, vitals, vitalSigns, prescriptions, treatmentPlan, notes, documents } = req.body;
         const pId = patientId || (typeof patient === "object" ? patient?._id || patient?.id : patient);
         const dId = doctorId || (typeof doctor === "object" ? doctor?._id || doctor?.id : doctor);
         const aId = appointmentId || (typeof appointment === "object" ? appointment?._id || appointment?.id : appointment);
         const rDate = recordDate || date;
+        const vitalsData = vitals !== undefined ? vitals : vitalSigns;
 
         await db.query(
             `UPDATE medical_records SET
@@ -154,11 +158,11 @@ const updateMedicalRecord = async (req, res) => {
                 rDate,
                 diagnosis,
                 symptoms,
-                vitals ? JSON.stringify(vitals) : null,
-                prescriptions ? JSON.stringify(prescriptions) : null,
+                vitalsData !== undefined ? JSON.stringify(vitalsData) : null,
+                prescriptions !== undefined ? JSON.stringify(prescriptions) : null,
                 treatmentPlan,
                 notes,
-                documents ? JSON.stringify(documents) : null,
+                documents !== undefined ? JSON.stringify(documents) : null,
                 req.params.id,
             ]
         );

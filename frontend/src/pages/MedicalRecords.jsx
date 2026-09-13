@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Search, FileText, Activity, Stethoscope, User, Calendar, Pill, Paperclip, ExternalLink, Download } from "lucide-react";
+import { Plus, Search, FileText, Activity, Stethoscope, User, Calendar, Pill, Paperclip, ExternalLink, Download, Pencil, Trash2 } from "lucide-react";
 import api from "../api/axios";
 import Modal from "../components/Modal";
 import FileUpload from "../components/FileUpload";
@@ -10,11 +10,15 @@ const MedicalRecords = () => {
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
-    const [form, setForm] = useState({
+    const [editingRecordId, setEditingRecordId] = useState(null);
+
+    const emptyForm = {
         patient: "",
         doctor: "",
+        recordDate: new Date().toISOString().split("T")[0],
         diagnosis: "",
         symptoms: "",
         treatmentPlan: "",
@@ -22,10 +26,12 @@ const MedicalRecords = () => {
         heartRate: "72 bpm",
         temperature: "98.6 °F",
         weight: "70 kg",
-        prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days" }],
+        prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days", status: "Pending" }],
         notes: "",
         documents: [],
-    });
+    };
+
+    const [form, setForm] = useState(emptyForm);
 
     const fetchData = async () => {
         setLoading(true);
@@ -44,8 +50,8 @@ const MedicalRecords = () => {
             if (patList.length && docList.length) {
                 setForm((prev) => ({
                     ...prev,
-                    patient: patList[0]._id,
-                    doctor: docList[0]._id,
+                    patient: prev.patient || patList[0]._id || patList[0].id,
+                    doctor: prev.doctor || docList[0]._id || docList[0].id,
                 }));
             }
         } catch (error) {
@@ -62,58 +68,136 @@ const MedicalRecords = () => {
         fetchData();
     }, []);
 
-    const handleAddPrescriptionField = () => {
+    const openCreateModal = () => {
+        setEditingRecordId(null);
         setForm({
-            ...form,
+            ...emptyForm,
+            patient: patients[0]?._id || patients[0]?.id || "",
+            doctor: doctors[0]?._id || doctors[0]?.id || "",
+            recordDate: new Date().toISOString().split("T")[0],
+        });
+        setModalOpen(true);
+    };
+
+    const openEditModal = (record) => {
+        setEditingRecordId(record._id || record.id);
+        const vitals = record.vitalSigns || record.vitals || {};
+        const prescriptionsList = (record.prescriptions && record.prescriptions.length > 0)
+            ? record.prescriptions.map((p) => ({
+                medicineName: p.medicineName || "",
+                dosage: p.dosage || "",
+                frequency: p.frequency || "Once daily",
+                duration: p.duration || "7 days",
+                status: p.status || "Pending",
+              }))
+            : [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days", status: "Pending" }];
+
+        const recDate = record.recordDate || record.date
+            ? new Date(record.recordDate || record.date).toISOString().split("T")[0]
+            : new Date().toISOString().split("T")[0];
+
+        setForm({
+            patient: record.patient?._id || record.patient?.id || record.patient_id || (patients[0]?._id || patients[0]?.id || ""),
+            doctor: record.doctor?._id || record.doctor?.id || record.doctor_id || (doctors[0]?._id || doctors[0]?.id || ""),
+            recordDate: recDate,
+            diagnosis: record.diagnosis || "",
+            symptoms: record.symptoms || "",
+            treatmentPlan: record.treatmentPlan || "",
+            bloodPressure: vitals.bloodPressure || "120/80",
+            heartRate: vitals.heartRate || "72 bpm",
+            temperature: vitals.temperature || "98.6 °F",
+            weight: vitals.weight || "70 kg",
+            prescriptions: prescriptionsList,
+            notes: record.notes || "",
+            documents: Array.isArray(record.documents) ? record.documents : [],
+        });
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setEditingRecordId(null);
+    };
+
+    const handleAddPrescriptionField = () => {
+        setForm((prev) => ({
+            ...prev,
             prescriptions: [
-                ...form.prescriptions,
-                { medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days" },
+                ...prev.prescriptions,
+                { medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days", status: "Pending" },
             ],
+        }));
+    };
+
+    const handleRemovePrescriptionField = (index) => {
+        setForm((prev) => {
+            if (prev.prescriptions.length <= 1) {
+                return {
+                    ...prev,
+                    prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days", status: "Pending" }],
+                };
+            }
+            return {
+                ...prev,
+                prescriptions: prev.prescriptions.filter((_, i) => i !== index),
+            };
         });
     };
 
     const handlePrescriptionChange = (index, field, value) => {
-        const updated = [...form.prescriptions];
-        updated[index][field] = value;
-        setForm({ ...form, prescriptions: updated });
+        setForm((prev) => {
+            const updated = [...prev.prescriptions];
+            updated[index] = { ...updated[index], [field]: value };
+            return { ...prev, prescriptions: updated };
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitting(true);
         try {
+            const vitalsObj = {
+                bloodPressure: form.bloodPressure,
+                heartRate: form.heartRate,
+                temperature: form.temperature,
+                weight: form.weight,
+            };
             const payload = {
                 patient: form.patient,
                 doctor: form.doctor,
+                recordDate: form.recordDate,
                 diagnosis: form.diagnosis,
                 symptoms: form.symptoms,
                 treatmentPlan: form.treatmentPlan,
-                vitalSigns: {
-                    bloodPressure: form.bloodPressure,
-                    heartRate: form.heartRate,
-                    temperature: form.temperature,
-                    weight: form.weight,
-                },
+                vitalSigns: vitalsObj,
+                vitals: vitalsObj,
                 prescriptions: form.prescriptions
-                    .filter((p) => p.medicineName.trim())
+                    .filter((p) => p.medicineName && p.medicineName.trim())
                     .map((p) => ({ ...p, status: p.status || "Pending" })),
                 notes: form.notes,
                 documents: form.documents || [],
             };
-            await api.post("/medical-records", payload);
-            toast.success("Medical record created successfully");
+
+            if (editingRecordId) {
+                await api.put(`/medical-records/${editingRecordId}`, payload);
+                toast.success("Medical record updated successfully");
+            } else {
+                await api.post("/medical-records", payload);
+                toast.success("Medical record created successfully");
+            }
+
             setModalOpen(false);
-            setForm((prev) => ({
-                ...prev,
-                diagnosis: "",
-                symptoms: "",
-                treatmentPlan: "",
-                notes: "",
-                documents: [],
-                prescriptions: [{ medicineName: "", dosage: "", frequency: "Once daily", duration: "7 days" }],
-            }));
+            setEditingRecordId(null);
+            setForm({
+                ...emptyForm,
+                patient: patients[0]?._id || patients[0]?.id || "",
+                doctor: doctors[0]?._id || doctors[0]?.id || "",
+            });
             fetchData();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to save medical record");
+            toast.error(error.response?.data?.message || `Failed to ${editingRecordId ? "update" : "save"} medical record`);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -134,7 +218,7 @@ const MedicalRecords = () => {
                     <h1 className="text-2xl font-bold text-gray-800">Electronic Medical Records (EMR)</h1>
                     <p className="text-gray-500">Track patient diagnoses, vitals, treatment plans, and prescriptions.</p>
                 </div>
-                <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2 w-fit">
+                <button onClick={openCreateModal} className="btn-primary flex items-center gap-2 w-fit">
                     <Plus size={18} /> New Medical Record
                 </button>
             </div>
@@ -156,7 +240,7 @@ const MedicalRecords = () => {
             ) : (
                 <div className="space-y-4">
                     {filteredRecords.map((r) => (
-                        <div key={r._id} className="card hover:shadow-md transition-shadow">
+                        <div key={r._id || r.id} className="card hover:shadow-md transition-shadow">
                             <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-gray-100">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-bold">
@@ -171,13 +255,23 @@ const MedicalRecords = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-50 text-accent-700 rounded-full text-xs font-semibold">
-                                        <Stethoscope size={14} /> {r.doctor?.name || "Doctor"}
-                                    </span>
-                                    <p className="text-xs text-gray-400 mt-1 flex items-center justify-end gap-1">
-                                        <Calendar size={12} /> {new Date(r.recordDate).toLocaleDateString()}
-                                    </p>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-50 text-accent-700 rounded-full text-xs font-semibold">
+                                            <Stethoscope size={14} /> {r.doctor?.name || "Doctor"}
+                                        </span>
+                                        <p className="text-xs text-gray-400 mt-1 flex items-center justify-end gap-1">
+                                            <Calendar size={12} /> {new Date(r.recordDate).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => openEditModal(r)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-accent-700 bg-accent-50 hover:bg-accent-100 border border-accent-200/80 rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
+                                        title="Edit Medical Record"
+                                    >
+                                        <Pencil size={13} />
+                                        <span>Edit</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -207,16 +301,16 @@ const MedicalRecords = () => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                         <div>
-                                            <span className="text-gray-400">BP:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.bloodPressure || "120/80"}</span>
+                                            <span className="text-gray-400">BP:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.bloodPressure || r.vitals?.bloodPressure || "120/80"}</span>
                                         </div>
                                         <div>
-                                            <span className="text-gray-400">Heart Rate:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.heartRate || "72 bpm"}</span>
+                                            <span className="text-gray-400">Heart Rate:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.heartRate || r.vitals?.heartRate || "72 bpm"}</span>
                                         </div>
                                         <div>
-                                            <span className="text-gray-400">Temp:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.temperature || "98.6 °F"}</span>
+                                            <span className="text-gray-400">Temp:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.temperature || r.vitals?.temperature || "98.6 °F"}</span>
                                         </div>
                                         <div>
-                                            <span className="text-gray-400">Weight:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.weight || "70 kg"}</span>
+                                            <span className="text-gray-400">Weight:</span> <span className="font-semibold text-gray-700">{r.vitalSigns?.weight || r.vitals?.weight || "70 kg"}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -287,9 +381,9 @@ const MedicalRecords = () => {
                 </div>
             )}
 
-            <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Create New EMR Record">
+            <Modal isOpen={modalOpen} onClose={handleCloseModal} title={editingRecordId ? "Edit Medical Record" : "Create New EMR Record"}>
                 <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className="label-field">Patient</label>
                             <select
@@ -299,10 +393,13 @@ const MedicalRecords = () => {
                                 required
                             >
                                 {patients.map((p) => (
-                                    <option key={p._id} value={p._id}>
-                                        {p.firstName} {p.lastName} ({p.phone})
+                                    <option key={p._id || p.id} value={p._id || p.id}>
+                                        {p.firstName} {p.lastName} ({p.phone || "N/A"})
                                     </option>
                                 ))}
+                                {form.patient && !patients.some((p) => String(p._id || p.id) === String(form.patient)) && (
+                                    <option value={form.patient}>Selected Patient ({form.patient})</option>
+                                )}
                             </select>
                         </div>
                         <div>
@@ -314,11 +411,24 @@ const MedicalRecords = () => {
                                 required
                             >
                                 {doctors.map((d) => (
-                                    <option key={d._id} value={d._id}>
-                                        {d.name} ({d.specialization})
+                                    <option key={d._id || d.id} value={d._id || d.id}>
+                                        {d.name} ({d.specialization || "General"})
                                     </option>
                                 ))}
+                                {form.doctor && !doctors.some((d) => String(d._id || d.id) === String(form.doctor)) && (
+                                    <option value={form.doctor}>Selected Doctor ({form.doctor})</option>
+                                )}
                             </select>
+                        </div>
+                        <div>
+                            <label className="label-field">Record Date</label>
+                            <input
+                                type="date"
+                                className="input-field"
+                                value={form.recordDate}
+                                onChange={(e) => setForm({ ...form, recordDate: e.target.value })}
+                                required
+                            />
                         </div>
                     </div>
 
@@ -399,39 +509,49 @@ const MedicalRecords = () => {
                             <button
                                 type="button"
                                 onClick={handleAddPrescriptionField}
-                                className="text-xs font-semibold text-primary-600 hover:text-primary-800"
+                                className="text-xs font-semibold text-primary-600 hover:text-primary-800 flex items-center gap-1 cursor-pointer"
                             >
-                                + Add Medicine
+                                <Plus size={14} /> Add Medicine
                             </button>
                         </div>
-                        {form.prescriptions.map((p, idx) => (
-                            <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                                <input
-                                    className="input-field text-xs"
-                                    placeholder="Medicine Name"
-                                    value={p.medicineName}
-                                    onChange={(e) => handlePrescriptionChange(idx, "medicineName", e.target.value)}
-                                />
-                                <input
-                                    className="input-field text-xs"
-                                    placeholder="Dosage (500mg)"
-                                    value={p.dosage}
-                                    onChange={(e) => handlePrescriptionChange(idx, "dosage", e.target.value)}
-                                />
-                                <input
-                                    className="input-field text-xs"
-                                    placeholder="Frequency"
-                                    value={p.frequency}
-                                    onChange={(e) => handlePrescriptionChange(idx, "frequency", e.target.value)}
-                                />
-                                <input
-                                    className="input-field text-xs"
-                                    placeholder="Duration"
-                                    value={p.duration}
-                                    onChange={(e) => handlePrescriptionChange(idx, "duration", e.target.value)}
-                                />
-                            </div>
-                        ))}
+                        <div className="space-y-2">
+                            {form.prescriptions.map((p, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                    <input
+                                        className="input-field text-xs flex-[2]"
+                                        placeholder="Medicine Name (e.g. Amoxicillin)"
+                                        value={p.medicineName}
+                                        onChange={(e) => handlePrescriptionChange(idx, "medicineName", e.target.value)}
+                                    />
+                                    <input
+                                        className="input-field text-xs flex-1"
+                                        placeholder="Dosage (500mg)"
+                                        value={p.dosage}
+                                        onChange={(e) => handlePrescriptionChange(idx, "dosage", e.target.value)}
+                                    />
+                                    <input
+                                        className="input-field text-xs flex-1"
+                                        placeholder="Frequency"
+                                        value={p.frequency}
+                                        onChange={(e) => handlePrescriptionChange(idx, "frequency", e.target.value)}
+                                    />
+                                    <input
+                                        className="input-field text-xs flex-1"
+                                        placeholder="Duration"
+                                        value={p.duration}
+                                        onChange={(e) => handlePrescriptionChange(idx, "duration", e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemovePrescriptionField(idx)}
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer shrink-0"
+                                        title="Remove medicine"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div>
@@ -455,9 +575,33 @@ const MedicalRecords = () => {
                         />
                     </div>
 
-                    <button type="submit" className="btn-primary w-full">
-                        Save Medical Record
-                    </button>
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={handleCloseModal}
+                            className="btn-secondary flex-1 cursor-pointer"
+                            disabled={submitting}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="btn-primary flex-1 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            {submitting ? (
+                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                            ) : editingRecordId ? (
+                                <>
+                                    <Pencil size={16} /> Update Medical Record
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={16} /> Save Medical Record
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </form>
             </Modal>
         </div>
